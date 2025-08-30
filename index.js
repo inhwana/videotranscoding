@@ -111,7 +111,7 @@ app.get('/download/:filename', checkauthenticated,(req, res) => {
 
 //Login
 app.get('/', checknotauthenticated,(req, res)=>{    
-    res.render("Login")
+    res.render("login")
 })
 
 app.post('/', checknotauthenticated,passport.authenticate('local',{
