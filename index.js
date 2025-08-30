@@ -1,11 +1,43 @@
 const express = require('express')
 const multer = require('multer')
 const ffmpeg = require('fluent-ffmpeg')
+const bcrypt = require('bcrypt')
+const passport = require('passport')
+const flash = require('express-flash')
+const session = require('express-session')
+const dotenv = require('dotenv')
 const fs = require('fs')
 const path = require('path')
+const initializepassport = require('./passportconfig')
 //Default
 const app = express()
 app.set("view engine", "ejs")
+app.use(express.urlencoded({ extended: true })); // To get forms from EJS
+dotenv.config() // Configuratio
+
+
+
+
+/////
+initializepassport(
+    passport, 
+    username =>  users.find(user => user.username === username),
+    id => users.find(user => user.id === id),
+)
+app.use(flash())
+app.use(session({
+    secret: process.env.SESSIONKEY,
+    resave: false,
+    saveUninitialized: false
+}))
+const users =[]
+app.use(passport.initialize())
+app.use(passport.session())
+/////
+
+
+
+
 
 //Multer
 const storage = multer.diskStorage({
@@ -22,123 +54,37 @@ const upload = multer({storage: storage})
 //Create uplaod file if doesnt exist
 if(!fs.existsSync("upload")){fs.mkdirSync("upload")}
 
+
+
+
+
+
 //Upload page
-app.get('/', (req,res) =>{
-    res.render("index")
+app.get('/upload', checkauthenticated,(req,res) =>{
+    res.render("upload")
 })
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-// //F1
-// app.post('/', upload.single("video"), (req,res)=>{
-//     const inputpath = req.file.path
-//     const outputfilename = req.body.filename + '.mp4'
-//     const outputpath = path.join('upload', outputfilename)
-//     ffmpeg(inputpath)
-//     .output(outputpath)
-//     //.videoCodec('libx264') LOW CPU TESTING
-//     .videoCodec('libx265')
-//     //.audioCodec('aac')
-//     //.videoBitrate('10000k')
-//     //.audioBitrate('192k') 
-//     //.size('3480x2160')
-//     //.addOptions([
-//     //'-preset', 'veryslow',  // Pass the preset as a custom FFmpeg option
-//     //'-threads', '1',        // Force single-thread encoding for maximum CPU usage
-//     //])
-//     .on('end', () => {
-//     console.log('Transcoding complete.');
-//     fs.unlinkSync(inputpath)
-//     res.redirect('/download')
-//     })
-//     .on('error', (err) => {
-//     console.error('Error:', err.message);
-//     res.status(500).send("Transcoding Failed :(")
-//     })
-//     .run();
-// })
-
-// //Download page 
-// app.get('/download', (req,res)=>{
-//     res.render(download)
-// })
-// //app.post()
-
-
-
-
-
-
-//F2 Works
-// app.post('/', upload.single("video"), (req,res)=>{
-//     const inputpath = req.file.path
-//     const outputfilename = req.file.filename.split('.')[0] + '.mp4';
-//     const outputpath = `converted/${req.file.filename}.mp4`;
-//     ffmpeg(inputpath)
-//     .output(outputpath)
-//     //.videoCodec('libx264') LOW CPU TESTING
-//     .videoCodec('libx265')
-//     //.audioCodec('aac')
-//     //.videoBitrate('10000k')
-//     //.audioBitrate('192k') 
-//     //.size('3480x2160')
-//     //.addOptions([
-//     //'-preset', 'veryslow',  // Pass the preset as a custom FFmpeg option
-//     //'-threads', '1',        // Force single-thread encoding for maximum CPU usage
-//     //])
-//     .on('end', () => {
-//     console.log('Transcoding complete.');
-//     fs.unlinkSync(inputpath)
-//     res.render('success', { downloadPath: `/download/${req.file.filename}.mp4` });
-//     })
-//     .on('error', (err) => {
-//     console.error('Error:', err.message);
-//     res.status(500).send("Transcoding Failed :(")
-//     })
-//     .run();
-// })
-
-// app.get('/download/:filename', (req, res) => {
-//   const filePath = path.join(__dirname, 'converted', req.params.filename);
-//   res.download(filePath);
-// });
-
-
-
-
-
-//Final3
-app.post('/', upload.single("video"), (req,res)=>{
+//Upload
+app.post('/upload', checkauthenticated,upload.single("video"), (req,res)=>{
     const inputpath = req.file.path
     const outputfilename = req.body.filename + '.mp4'
     const outputpath = `upload/${outputfilename}`
     ffmpeg(inputpath)
     .output(outputpath)
-    //.videoCodec('libx264') LOW CPU TESTING
-    .videoCodec('libx265')
+    .videoCodec('libx264') //LOW CPU TESTING
+    //.videoCodec('libx265')
     //.audioCodec('aac')
-    //.videoBitrate('10000k')
+    //.videoBitrate('1000k')//10000Max
     //.audioBitrate('192k') 
     //.size('3480x2160')
-    //.addOptions([
+    .addOptions([
     //'-preset', 'veryslow',  // Pass the preset as a custom FFmpeg option
     //'-threads', '1',        // Force single-thread encoding for maximum CPU usage
-    //])
+    ])
     .on('end', () => {
     console.log('Transcoding complete.');
     fs.unlinkSync(inputpath)
-    res.render('download', { downloadPath: `/upload/${outputfilename}` });
+    res.render('download', { downloadPath: `/download/${outputfilename}` });
     })
     .on('error', (err) => {
     console.error('Error:', err.message);
@@ -148,7 +94,7 @@ app.post('/', upload.single("video"), (req,res)=>{
 })
 
 // Download
-app.get('/upload/:filename', (req, res) => {
+app.get('/download/:filename', checkauthenticated,(req, res) => {
   const filepath = path.join(__dirname, 'upload', req.params.filename);
   res.download(filepath);
 });
@@ -156,95 +102,74 @@ app.get('/upload/:filename', (req, res) => {
 
 
 
-//test1
-// app.post('/', upload.single("video"), (req,res)=>{
-//     const inputpath = req.file.path
-//     const outputfilename = req.body.filename + '.mp4'
-//     const outputpath = path.join('upload', outputfilename)
-//     ffmpeg(inputpath)
-//     .output(outputpath)
-//     //.videoCodec('libx264') LOW CPU TESTING
-//     .videoCodec('libx265')
-//     //.audioCodec('aac')
-//     //.videoBitrate('10000k')
-//     //.audioBitrate('192k') 
-//     //.size('3480x2160')
-//     //.addOptions([
-//     //'-preset', 'veryslow',  // Pass the preset as a custom FFmpeg option
-//     //'-threads', '1',        // Force single-thread encoding for maximum CPU usage
-//     //])
-//     .on('end', () => {
-//     console.log('Transcoding complete.');
-//     fs.unlinkSync(inputpath)
-//     //res.redirect('/download')
-//     res.render('download', { downloadPath: `/download/${outputfilename}.mp4` });
-//     })
-//     .on('error', (err) => {
-//     console.error('Error:', err.message);
-//     res.status(500).send("Transcoding Failed :(")
-//     })
-//     .run();
-// })
-
-// app.get('/download/:filename', (req, res) => {
-//   const filePath = path.join(__dirname, 'converted', req.params.filename);
-//   res.download(filePath);
-// });
-
-//Download page 
-// app.get('/download:filename', (req,res)=>{
-//     res.send(`${filename}`)
-//     //res.render(download)
-// })
-//app.post()
 
 
 
 
 
 
-// //test 2
-// app.post('/', upload.single("video"), (req,res)=>{
-//     const inputpath = req.file.path
-//     //const outputfilename = req.body.filename + '.mp4'
-//     const outputfilename = req.file.filename.split('.')[0] + '.mp4';
-//     const outputpath = path.join('upload', outputfilename)
-//     ffmpeg(inputpath)
-//     .output(outputpath)
-//     //.videoCodec('libx264') LOW CPU TESTING
-//     .videoCodec('libx265')
-//     //.audioCodec('aac')
-//     //.videoBitrate('10000k')
-//     //.audioBitrate('192k') 
-//     //.size('3480x2160')
-//     //.addOptions([
-//     //'-preset', 'veryslow',  // Pass the preset as a custom FFmpeg option
-//     //'-threads', '1',        // Force single-thread encoding for maximum CPU usage
-//     //])
-//     .on('end', () => {
-//     console.log('Transcoding complete.');
-//     fs.unlinkSync(inputpath)
-//     //res.redirect('/download')
-//     res.render('download', { downloadPath: `/download/${outputfilename}.mp4` });
-//     })
-//     .on('error', (err) => {
-//     console.error('Error:', err.message);
-//     res.status(500).send("Transcoding Failed :(")
-//     })
-//     .run();
-// })
 
-// app.get('/download/:filename', (req, res) => {
-//   const filePath = path.join(__dirname, 'converted', req.params.filename);
-//   res.download(filePath);
-// });
+//Login
+app.get('/', checknotauthenticated,(req, res)=>{    
+    res.render("Login")
+})
 
-// //Download page 
-// // app.get('/download:filename', (req,res)=>{
-// //     res.send(`${filename}`)
-// //     //res.render(download)
-// // })
-// //app.post()
+app.post('/', checknotauthenticated,passport.authenticate('local',{
+    successRedirect:'/upload',
+    failureRedrect:'/login',
+    failureFlash:true
+}),(req, res)=>{
+    res.render("upload")
+})
+
+
+
+
+
+
+//Register
+app.get('/register',checknotauthenticated ,(req, res)=>{    
+    res.render("register")
+})
+
+app.post('/register',checknotauthenticated,async(req, res)=>{
+    try {
+        const hashedpassword = await bcrypt.hash(req.body.password,10)
+        users.push({
+            id: Date.now().toString(),
+            username: req.body.username,
+            password: hashedpassword,
+        })
+        res.redirect('/')
+    } catch (error) {
+        res.redirect('/register')
+    }
+    console.log(users)
+
+})
+
+
+
+
+
+
+
+
+function checkauthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next()
+  }
+
+  res.redirect('/login')
+}
+
+function checknotauthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return res.redirect('/')
+  }
+  next()
+}
+
 
 
 //Default
