@@ -6,4 +6,4 @@ COPY . .
 RUN apk update && \ 
     apk add ffmpeg
 CMD ["node", "index.js"] 
-EXPOSE 4000
+EXPOSE 3000
