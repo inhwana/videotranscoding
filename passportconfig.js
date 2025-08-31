@@ -1,4 +1,4 @@
-//
+//Reference: https://www.youtube.com/watch?v=-RCnNyD0L-s&list=PLZlA0Gpn_vH9yI1hwDVzWqu5sAfajcsBQ&index=4
 const bcrypt = require('bcrypt')
 const localstrategy = require('passport-local').Strategy
 

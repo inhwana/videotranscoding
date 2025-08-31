@@ -64,21 +64,21 @@ app.get('/upload', checkauthenticated,(req,res) =>{
     res.render("upload")
 })
 
-//Upload
+//Upload Video Transcoding, Used AI to find the ffmpeg setting to create high CPU usage.
 app.post('/upload', checkauthenticated,upload.single("video"), (req,res)=>{
     const inputpath = req.file.path
     const outputfilename = req.body.filename + '.mp4'
     const outputpath = `upload/${outputfilename}`
     ffmpeg(inputpath)
     .output(outputpath)
-    .videoCodec('libx264') //LOW CPU TESTING
-    //.videoCodec('libx265')
-    //.audioCodec('aac')
-    //.videoBitrate('1000k')//10000Max
+    //.videoCodec('libx264') //LOW CPU TESTING
+    .videoCodec('libx265')
+    .audioCodec('aac')
+    .videoBitrate('1000k')//10000Max
     //.audioBitrate('192k') 
     //.size('3480x2160')
     .addOptions([
-    //'-preset', 'veryslow',  // Pass the preset as a custom FFmpeg option
+    '-preset', 'veryslow',  // Pass the preset as a custom FFmpeg option
     //'-threads', '1',        // Force single-thread encoding for maximum CPU usage
     ])
     .on('end', () => {
