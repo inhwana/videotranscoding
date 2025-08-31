@@ -15,30 +15,30 @@ Core criteria
 
 ### Containerise the app
 
-- **ECR Repository name:**
-- **Video timestamp:**
+- **ECR Repository name:** n10851879-repo
+- **Video timestamp:** 01:40
 - **Relevant files:**
-    - 
+    - Dockerfile
 
 ### Deploy the container
 
-- **EC2 instance ID:**
-- **Video timestamp:**
+- **EC2 instance ID:** i-0681ac66dab06c9aa
+- **Video timestamp:** 02:20
 
 ### User login
 
 - **One line description:** Used passport and express-session for the login.
-- **Video timestamp:**
+- **Video timestamp:** 00:45
 - **Relevant files:**
     - passport.config.js
     - index.js 22
 
 ### REST API
 
-- **One line description:**
+- **One line description:** HTTP methods (GET, POST)
 - **Video timestamp:**
 - **Relevant files:**
-    - 
+    - index.js
 
 ### Data types
 
@@ -55,7 +55,7 @@ Core criteria
 - **Video timestamp:**
 - **Relevant files:**
     - /upload
-    - /index.js 42
+    - index.js 42
 
 #### Second kind
 
@@ -69,14 +69,14 @@ Core criteria
 ### CPU intensive task
 
  **One line description:**: Used FFMpeg to transcode a video uploaded by the user.
-- **Video timestamp:** 
+- **Video timestamp:** 03:45 
 - **Relevant files:**
     - index.js 67
 
 ### CPU load testing
 
  **One line description:** Videos are uploaded and requests to transcode to a new format via the web client.
-- **Video timestamp:** 
+- **Video timestamp:** 03:17
 - **Relevant files:**
     - index.js
 
@@ -85,10 +85,10 @@ Additional criteria
 
 ### Extensive REST API features
 
-- **One line description:** Not attempted
+- **One line description:** Use of Middleware(multer)
 - **Video timestamp:**
 - **Relevant files:**
-    - 
+    - index.js 42
 
 ### External API(s)
 
@@ -121,7 +121,7 @@ Additional criteria
 ### Web client
 
 - **One line description:** Have used ejs files to create the front end for the web app.
-- **Video timestamp:**
+- **Video timestamp:** 03:00
 - **Relevant files:**
     - /views/download.ejs
     - /views/login.ejs
