@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true })); // To get forms from EJS
 dotenv.config() // Configuratio
 
 
-
+//wassup inhwa
 
 /////
 initializepassport(
