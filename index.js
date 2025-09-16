@@ -9,6 +9,7 @@ const dotenv = require('dotenv')
 const fs = require('fs')
 const path = require('path')
 const initializepassport = require('./passportconfig')
+const {initialiseVideoTable} = require("./db")
 //Default
 const app = express()
 app.set("view engine", "ejs")
@@ -16,7 +17,8 @@ app.use(express.urlencoded({ extended: true })); // To get forms from EJS
 dotenv.config() // Configuratio
 
 
-//wassup inhwa
+// creating a table to store video metadata!
+initialiseVideoTable();
 
 /////
 initializepassport(

@@ -36,3 +36,8 @@ const initialiseVideoTable = async () => {
     )
 
 }
+
+module.exports = {
+    initialiseVideoTable,
+    openDb
+}
