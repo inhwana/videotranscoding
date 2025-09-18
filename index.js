@@ -10,6 +10,9 @@ const fs = require('fs')
 const path = require('path')
 const initializepassport = require('./passportconfig')
 const {initialiseVideoTable} = require("./db")
+const S3 = require("@aws-sdk/client-s3") // AWS S3
+const bucketName = 'n10851879-test' // Test Bucket Name
+
 //Default
 const app = express()
 app.set("view engine", "ejs")
@@ -73,19 +76,33 @@ app.post('/upload', checkauthenticated,upload.single("video"), (req,res)=>{
     const outputpath = `upload/${outputfilename}`
     ffmpeg(inputpath)
     .output(outputpath)
-    //.videoCodec('libx264') //LOW CPU TESTING
-    .videoCodec('libx265')
-    .audioCodec('aac')
-    .videoBitrate('1000k')//10000Max
+    .videoCodec('libx264') //LOW CPU TESTING
+    //.videoCodec('libx265') UNCOMMENT
+    //.audioCodec('aac') UNCOMMENT
+    //.videoBitrate('1000k')//10000Max UNCOMMENT
     //.audioBitrate('192k') 
     //.size('3480x2160')
-    .addOptions([
-    '-preset', 'veryslow',  // Pass the preset as a custom FFmpeg option
-    //'-threads', '1',        // Force single-thread encoding for maximum CPU usage
-    ])
-    .on('end', () => {
+    // .addOptions([ UNCOMMENT
+    // '-preset', 'veryslow',  // Pass the preset as a custom FFmpeg option
+    // //'-threads', '1',        // Force single-thread encoding for maximum CPU usage
+    // ])
+    .on('end', async() => {
     console.log('Transcoding complete.');
     fs.unlinkSync(inputpath)
+    const filestream = fs.createReadStream(outputpath)
+    s3Client = new S3.S3Client({ region: 'ap-southeast-2' });
+    try {
+    const response = await s3Client.send(
+        new S3.PutObjectCommand({
+            Bucket: bucketName,
+            Key: outputfilename,
+            Body: filestream
+        })
+    );
+    console.log(response);
+    } catch (err) {
+        console.log(err);
+    }
     res.render('download', { downloadPath: `/download/${outputfilename}` });
     })
     .on('error', (err) => {
