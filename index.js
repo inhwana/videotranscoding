@@ -9,9 +9,13 @@ const dotenv = require('dotenv')
 const fs = require('fs')
 const path = require('path')
 const initializepassport = require('./passportconfig')
-const {initialiseVideoTable} = require("./db")
 const S3 = require("@aws-sdk/client-s3") // AWS S3
 const bucketName = 'n10851879-test' // Test Bucket Name
+const SecretsManager = require("@aws-sdk/client-secrets-manager");
+const {} = require("./auth.js")
+
+// router for routes
+
 
 //Default
 const app = express()
@@ -19,9 +23,6 @@ app.set("view engine", "ejs")
 app.use(express.urlencoded({ extended: true })); // To get forms from EJS
 dotenv.config() // Configuratio
 
-
-// creating a table to store video metadata!
-initialiseVideoTable();
 
 /////
 initializepassport(
@@ -119,20 +120,12 @@ app.get('/download/:filename', checkauthenticated,(req, res) => {
 });
 
 
-
-
-
-
-
-
-
-
-
 //Login
 app.get('/', checknotauthenticated,(req, res)=>{    
     res.render("login")
 })
 
+// this is the login thing that you should do/check/add your aws thing to!!
 app.post('/', checknotauthenticated,passport.authenticate('local',{
     successRedirect:'/upload',
     failureRedrect:'/login',
@@ -140,10 +133,6 @@ app.post('/', checknotauthenticated,passport.authenticate('local',{
 }),(req, res)=>{
     res.render("upload")
 })
-
-
-
-
 
 
 //Register
@@ -190,7 +179,30 @@ function checknotauthenticated(req, res, next) {
 }
 
 
+const secretName = "n11908157-clientSecret"
+
+const client = new SecretsManager.SecretsManagerClient({
+    region: "ap-southeast-2"
+})
+
+
+async function main() {
+    try {
+        response = await client.send(
+            new SecretsManager.GetSecretValueCommand({
+                SecretId: secretName
+            })
+        )
+        const secret = response.secretString;
+        console.log(secret)
+    }
+    catch(error) {
+        console.log(error)
+    }
+}
 
 //Default
-app.listen(3000)
+app.listen(3000, () => {
+    main();
+})
 console.log("Port Connected")
