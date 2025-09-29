@@ -22,12 +22,14 @@ const getSecrets = async () => {
     try {
         const secretCommand = new GetSecretValueCommand({ SecretId: "n11908157-secretForClient" })
         const secretResponse = await client.send(secretCommand)
-        clientSecret = secretResponse.SecretString;
+         const parsedSecret = JSON.parse(secretResponse.SecretString); // <-- parse JSON
+        clientSecret = parsedSecret.clientSecret; // extract actual string
 
 
         const idCommand = new GetSecretValueCommand({ SecretId: "n11908157-clientId" })
         const idResponse = await client.send(idCommand)
-        clientId = idResponse.SecretString;
+        const parsedId = JSON.parse(idResponse.SecretString); // <-- parse JSON
+        clientId = parsedId.clientId; // extract actual string
 
         return cachedSecrets = {clientSecret, clientId}
     }
