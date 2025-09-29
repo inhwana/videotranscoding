@@ -9,7 +9,7 @@ const S3 = require("@aws-sdk/client-s3") // AWS S3
 const bucketName = 'n10851879-test' // Test Bucket Name
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
 const { cognitoSignUp } = require("./auth.js")
-
+const { getSecrets } = require("./secrets.js")
 // router for routes
 
 
@@ -159,42 +159,6 @@ app.post('/register', async(req, res)=>{
 
 
 
-const client = new SecretsManager.SecretsManagerClient({
-    region: "ap-southeast-2"
-})
-
-
-
-const {
-  SecretsManagerClient,
-  GetSecretValueCommand,
-} = require("@aws-sdk/client-secrets-manager");
-
-// store secrets in memory!
-let clientSecret;
-let clientId;
-
-const getSecrets = async () => { 
-    try {
-        const secretCommand = new GetSecretValueCommand({ SecretId: "n11908157-secretForClient" })
-        const secretResponse = await client.send(secretCommand)
-        clientSecret = secretResponse.SecretString;
-
-
-        const idCommand = new GetSecretValueCommand({ SecretId: "n11908157-clientId" })
-        const idResponse = await client.send(idCommand)
-        clientId = idResponse.SecretString;
-
-        console.log("fetched secrets!!")
-    }
-    catch (err) {
-        console.error(err);
-        process.exit(1)
-
-    }
-   
-}
-
 
 
 //Default
@@ -206,6 +170,9 @@ const getSecrets = async () => {
 
 async function startServer() {
   await getSecrets();
+    // const clientId = "dktj13anu4sv0m465jemi791c";
+    // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
+
 
   // Configure session middleware with the clientSecret
   app.use(session({
@@ -228,3 +195,4 @@ async function startServer() {
 }
 
 startServer();
+
