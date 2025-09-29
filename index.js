@@ -192,15 +192,14 @@ const {
   GetSecretValueCommand,
 } = require("@aws-sdk/client-secrets-manager");
 
-const secretName = "n11908157-secretForClient";
 
 let clientSecret;
 
-async function getSecret() {
+async function getClientSecret() {
     try {
         response = await client.send(
             new SecretsManager.GetSecretValueCommand({
-                SecretId: secretName
+                SecretId: "n11908157-secretForClient"
             })
         )
         clientSecret = response.SecretString;
@@ -211,8 +210,27 @@ async function getSecret() {
     }
 }
 
+let clientId;
+
+async function getClientId() {
+    try {
+        response = await client.send(
+            new SecretsManager.GetSecretValueCommand({
+                SecretId: "n11908157-clientId"
+            })
+        )
+        clientId = response.SecretString;
+        console.log(clientId)
+    }
+    catch(error) {
+        console.log(error)
+    }
+}
+
+
 //Default
 app.listen(3000, () => {
-    getSecret();
+    getClientSecret();
+    getClientId();
 })
 console.log("Port Connected")
