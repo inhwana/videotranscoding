@@ -9,7 +9,7 @@ const S3 = require("@aws-sdk/client-s3") // AWS S3
 const bucketName = 'n10851879-test' // Test Bucket Name
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
 const { cognitoSignUp } = require("./auth.js")
-const { getSecrets, clientId, clientSecret } = require("./secrets.js")
+const { getSecrets } = require("./secrets.js")
 // router for routes
 
 
@@ -138,8 +138,8 @@ app.get('/register' ,(req, res)=>{
 app.post('/register', async(req, res)=>{
     const {username, password, email} = req.body;
     try {
-
-        cognitoSignUp(username, password, email)
+        const {clientId, clientSecret} = await getSecrets();
+        await cognitoSignUp(clientId, clientSecret, username, password, email);
       
         res.redirect('/')
     } catch (error) {
