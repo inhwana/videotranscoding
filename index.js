@@ -12,7 +12,7 @@ const initializepassport = require('./passportconfig')
 const S3 = require("@aws-sdk/client-s3") // AWS S3
 const bucketName = 'n10851879-test' // Test Bucket Name
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
-const {} = require("./auth.js")
+const { cognitoSignUp } = require("./auth.js")
 
 // router for routes
 
@@ -141,7 +141,10 @@ app.get('/register',checknotauthenticated ,(req, res)=>{
 })
 
 app.post('/register',checknotauthenticated,async(req, res)=>{
+    const {username, password, email} = req.body;
     try {
+
+        cognitoSignUp(username, password, email)
         const hashedpassword = await bcrypt.hash(req.body.password,10)
         users.push({
             id: Date.now().toString(),
