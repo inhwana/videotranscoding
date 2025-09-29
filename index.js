@@ -9,7 +9,7 @@ const S3 = require("@aws-sdk/client-s3") // AWS S3
 const bucketName = 'n10851879-test' // Test Bucket Name
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
 const { cognitoSignUp } = require("./auth.js")
-const { getSecrets } = require("./secrets.js")
+const { getSecrets, clientId, clientSecret } = require("./secrets.js")
 // router for routes
 
 
