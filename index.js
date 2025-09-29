@@ -20,8 +20,6 @@ const SecretsManager = require("@aws-sdk/client-secrets-manager");
 const { cognitoSignUp } = require("./auth.js")
 const { getSecrets } = require("./secrets.js")
 
-// router for routes// Delete this line maybe...
-
 
 //Default
 const app = express()
@@ -29,22 +27,6 @@ app.set("view engine", "ejs")
 app.use(express.urlencoded({ extended: true })); // To get forms from EJS
 dotenv.config() // Configuratio
 app.use(express.json()) // For parsing json
-
-
-//Multer
-/*const storage = multer.diskStorage({
-    destination: (req, file, cb) =>{
-        cb(null, 'upload')
-    },
-    filename: (req, file, cb) => {
-        console.log(file)
-        cb(null, Date.now() + path.extname(file.originalname))
-    }
-})
-const upload = multer({storage: storage})
-
-//Create uplaod file if doesnt exist
-if(!fs.existsSync("upload")){fs.mkdirSync("upload")}*/
 
 
 
@@ -145,72 +127,7 @@ app.post('/transcode', async (req,res) =>{
     }
 })
 
-/*
-//Upload Video Transcoding, Used AI to find the ffmpeg setting to create high CPU usage.
-app.post('/upload',upload.single("video"), (req,res)=>{
-    const inputpath = req.file.path
-    const outputfilename = req.body.filename + '.mp4'
-    const outputpath = `upload/${outputfilename}`
-    ffmpeg(inputpath)
-    .output(outputpath)
-    .videoCodec('libx264') //LOW CPU TESTING
-    //.videoCodec('libx265') UNCOMMENT
-    //.audioCodec('aac') UNCOMMENT
-    //.videoBitrate('1000k')//10000Max UNCOMMENT
-    //.audioBitrate('192k') 
-    //.size('3480x2160')
-    // .addOptions([ UNCOMMENT
-    // '-preset', 'veryslow',  // Pass the preset as a custom FFmpeg option
-    // //'-threads', '1',        // Force single-thread encoding for maximum CPU usage
-    // ])
-    .on('end', async() => {
-    console.log('Transcoding complete.');
-    fs.unlinkSync(inputpath)
-    const filestream = fs.createReadStream(outputpath)
-    s3Client = new S3.S3Client({ region: 'ap-southeast-2' });
-    try {
-    const response = await s3Client.send(
-        new S3.PutObjectCommand({
-            Bucket: bucketName,
-            Key: outputfilename,
-            Body: filestream
-        })
-    );
-    console.log(response);
-    } catch (err) {
-        console.log(err);
-    }
-    res.render('download', { downloadPath: `/download/${outputfilename}` });
-    })
-    .on('error', (err) => {
-    console.error('Error:', err.message);
-    res.status(500).send("Transcoding Failed :(")
-    })
-    .run();
-})
 
-// function checkauthenticated(req, res, next) {
-//   if (req.session && req.session.user) {
-//     return next()
-//   }
-
-//   res.redirect('/login')
-// }
-
-// function checknotauthenticated(req, res, next) {
-//   if (req.session && req.session.user) {
-//     return res.redirect('/upload')
-//   }
-//   next()
-// }
-
-
-// Download
-app.get('/download/:filename',(req, res) => {
-  const filepath = path.join(__dirname, 'upload', req.params.filename);
-  res.download(filepath);
-});
-*/
 
 //Login
 app.get('/',(req, res)=>{    
@@ -254,24 +171,6 @@ app.post('/register', async(req, res)=>{
 
 })
 
-
-
-
-
-
-
-
-
-
-
-
-
-//Default
-// app.listen(3000, () => {
-//     getClientSecret();
-//     getClientId();
-// })
-// console.log("Port Connected")
 
 async function startServer() {
   const { clientId, clientSecret } = await getSecrets(); // <-- destructure from result
