@@ -194,6 +194,7 @@ const {
 
 const secretName = "n11908157-secretForClient";
 
+let clientSecret;
 
 async function getSecret() {
     try {
@@ -202,8 +203,8 @@ async function getSecret() {
                 SecretId: secretName
             })
         )
-        const secret = response.secretString;
-        console.log(secret)
+        clientSecret = response.secretString;
+        console.log(clientSecret)
     }
     catch(error) {
         console.log(error)
