@@ -137,15 +137,26 @@ app.get('/register' ,(req, res)=>{
 
 app.post('/register', async(req, res)=>{
     const {username, password, email} = req.body;
+    console.log("Password received:", password);
+    console.log("Length:", password.length);
+    console.log("Has uppercase:", /[A-Z]/.test(password));
+    console.log("Has lowercase:", /[a-z]/.test(password));
+    console.log("Has number:", /[0-9]/.test(password));
+    console.log("Has special:", /[^A-Za-z0-9]/.test(password));
+
     try {
+        // const clientId = "dktj13anu4sv0m465jemi791c";
+        // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
+
         const {clientId, clientSecret} = await getSecrets();
-        await cognitoSignUp(clientId, clientSecret, username, password, email);
+        await cognitoSignUp(clientId, clientSecret, username, password, email)
       
-        res.redirect('/')
+        // res.redirect('/')
     } catch (error) {
-        res.redirect('/register')
+        console.log(error)
+        // res.redirect('/register')
     }
-    console.log(users)
+
 
 })
 
