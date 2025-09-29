@@ -114,7 +114,8 @@ app.post('/', checknotauthenticated,{
     failureFlash:true
 }),(req, res)=>{
     res.render("upload")
-})
+
+}
 
 
 //Register
