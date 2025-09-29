@@ -231,5 +231,6 @@ async function getClientId() {
 //Default
 app.listen(3000, () => {
     getClientSecret();
+    getClientId();
 })
 console.log("Port Connected")
