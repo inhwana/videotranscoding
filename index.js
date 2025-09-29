@@ -124,8 +124,7 @@ app.get('/',(req, res)=>{
 })
 
 // this is the login thing that you should do/check/add your aws thing to!!
-app.post('/', 
-}),(req, res)=>{
+app.post('/', ),(req, res)=>{
     res.render("upload")
 
 }
