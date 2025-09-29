@@ -57,7 +57,7 @@ app.get('/upload',(req,res) =>{
 })
 
 //S3 Upload
-app.post('/upload',checkauthenticated, async (req,res)=>{
+app.post('/upload', async (req,res)=>{
     // Return Upload Presigned URL
     const {filename} = req.body
     //const {filename, contentType} = req.body
@@ -77,7 +77,7 @@ app.post('/upload',checkauthenticated, async (req,res)=>{
 })
 
 // Transcode the video from S3
-app.post('/transcode',checkauthenticated, async (req,res) =>{
+app.post('/transcode', async (req,res) =>{
     const {filename} = req.body
     let transcodedkey = `transcoded${filename}`
     let response
