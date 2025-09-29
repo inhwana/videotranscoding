@@ -29,7 +29,7 @@ const getSecrets = async () => {
         const idResponse = await client.send(idCommand)
         clientId = idResponse.SecretString;
 
-        cachedSecrets = {clientSecret, clientId}
+        return cachedSecrets = {clientSecret, clientId}
     }
     catch (err) {
         console.error(err);
