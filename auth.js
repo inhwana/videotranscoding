@@ -4,7 +4,7 @@ const router = express.Router();
 const Cognito = require("@aws-sdk/client-cognito-identity-provider");
 const crypto = require("crypto");
 
-const {clientId, clientSecret} = require("./secrets.js")
+
 
 // create a bash64 HMAC-SHA256 hash of username and client id for Amazon Cognito
 const generateSecretHash = (clientId, clientSecret, userName) => {
@@ -20,7 +20,7 @@ const generateSecretHash = (clientId, clientSecret, userName) => {
     
 }
 
-const cognitoSignUp = async (username, password, email) => {
+const cognitoSignUp = async (clientId, clientSecret, username, password, email) => {
     // initialise a cognito identity provider client and create a new cognito command
     const client = new Cognito.CognitoIdentityProviderClient({region: 'ap-southeast-2'})
 
