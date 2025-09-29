@@ -95,6 +95,22 @@ app.post('/upload', checkauthenticated,upload.single("video"), (req,res)=>{
     .run();
 })
 
+function checkauthenticated(req, res, next) {
+  if (req.session && req.session.user) {
+    return next()
+  }
+
+  res.redirect('/login')
+}
+
+function checknotauthenticated(req, res, next) {
+  if (req.session && req.session.user) {
+    return res.redirect('/upload')
+  }
+  next()
+}
+
+
 // Download
 app.get('/download/:filename', checkauthenticated,(req, res) => {
   const filepath = path.join(__dirname, 'upload', req.params.filename);
@@ -143,20 +159,6 @@ app.post('/register',checknotauthenticated,async(req, res)=>{
 
 
 
-function checkauthenticated(req, res, next) {
-  if (req.session && req.session.user) {
-    return next()
-  }
-
-  res.redirect('/login')
-}
-
-function checknotauthenticated(req, res, next) {
-  if (req.session && req.session.user) {
-    return res.redirect('/upload')
-  }
-  next()
-}
 
 
 
