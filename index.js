@@ -48,12 +48,12 @@ if(!fs.existsSync("upload")){fs.mkdirSync("upload")}
 
 
 //Upload page
-app.get('/upload', checkauthenticated,(req,res) =>{
+app.get('/upload',(req,res) =>{
     res.render("upload")
 })
 
 //Upload Video Transcoding, Used AI to find the ffmpeg setting to create high CPU usage.
-app.post('/upload', checkauthenticated,upload.single("video"), (req,res)=>{
+app.post('/upload',upload.single("video"), (req,res)=>{
     const inputpath = req.file.path
     const outputfilename = req.body.filename + '.mp4'
     const outputpath = `upload/${outputfilename}`
@@ -95,23 +95,36 @@ app.post('/upload', checkauthenticated,upload.single("video"), (req,res)=>{
     .run();
 })
 
+function checkauthenticated(req, res, next) {
+  if (req.session && req.session.user) {
+    return next()
+  }
+
+  res.redirect('/login')
+}
+
+function checknotauthenticated(req, res, next) {
+  if (req.session && req.session.user) {
+    return res.redirect('/upload')
+  }
+  next()
+}
+
+
 // Download
-app.get('/download/:filename', checkauthenticated,(req, res) => {
+app.get('/download/:filename',(req, res) => {
   const filepath = path.join(__dirname, 'upload', req.params.filename);
   res.download(filepath);
 });
 
 
 //Login
-app.get('/', checknotauthenticated,(req, res)=>{    
+app.get('/',(req, res)=>{    
     res.render("login")
 })
 
 // this is the login thing that you should do/check/add your aws thing to!!
-app.post('/', checknotauthenticated,{
-    successRedirect:'/upload',
-    failureRedrect:'/login',
-    failureFlash:true
+app.post('/', 
 }),(req, res)=>{
     res.render("upload")
 
@@ -119,11 +132,11 @@ app.post('/', checknotauthenticated,{
 
 
 //Register
-app.get('/register',checknotauthenticated ,(req, res)=>{    
+app.get('/register' ,(req, res)=>{    
     res.render("register")
 })
 
-app.post('/register',checknotauthenticated,async(req, res)=>{
+app.post('/register', async(req, res)=>{
     const {username, password, email} = req.body;
     try {
 
@@ -143,20 +156,6 @@ app.post('/register',checknotauthenticated,async(req, res)=>{
 
 
 
-function checkauthenticated(req, res, next) {
-  if (req.session && req.session.user) {
-    return next()
-  }
-
-  res.redirect('/login')
-}
-
-function checknotauthenticated(req, res, next) {
-  if (req.session && req.session.user) {
-    return res.redirect('/upload')
-  }
-  next()
-}
 
 
 
