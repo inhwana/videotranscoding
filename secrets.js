@@ -15,7 +15,10 @@ const {
 let clientSecret;
 let clientId;
 
+let cachedSecrets = null;
 const getSecrets = async () => { 
+    if (cachedSecrets) return cachedSecrets;
+
     try {
         const secretCommand = new GetSecretValueCommand({ SecretId: "n11908157-secretForClient" })
         const secretResponse = await client.send(secretCommand)
@@ -26,7 +29,7 @@ const getSecrets = async () => {
         const idResponse = await client.send(idCommand)
         clientId = idResponse.SecretString;
 
-        console.log("fetched secrets!!")
+        cachedSecrets = {clientSecret, clientId}
     }
     catch (err) {
         console.error(err);
@@ -36,4 +39,4 @@ const getSecrets = async () => {
    
 }
 
-module.exports = {clientId, clientSecret, getSecrets}
+module.exports = {getSecrets}
