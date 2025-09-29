@@ -13,7 +13,7 @@ const generateSecretHash = (clientId, clientSecret, userName) => {
     const hasher = crypto.createHmac("sha256",  clientSecret)
 
     // hash the client ID and the user's username as the secret and return
-    const message = `${userName}${clientID}`
+    const message = `${userName}${clientId}`
     hasher.update(message);
 
     return hasher.digest('base64')
