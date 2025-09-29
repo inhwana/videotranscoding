@@ -10,7 +10,7 @@ const bucketName = 'n10851879-test' // Test Bucket Name
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
 const { cognitoSignUp } = require("./auth.js")
 const { getSecrets } = require("./secrets.js")
-// router for routes
+// router for routes// Delete this line maybe...
 
 
 //Default
@@ -18,13 +18,6 @@ const app = express()
 app.set("view engine", "ejs")
 app.use(express.urlencoded({ extended: true })); // To get forms from EJS
 dotenv.config() // Configuratio
-
-
-
-/////
-
-
-// hi inhwa
 
 
 //Multer
@@ -95,20 +88,20 @@ app.post('/upload',upload.single("video"), (req,res)=>{
     .run();
 })
 
-function checkauthenticated(req, res, next) {
-  if (req.session && req.session.user) {
-    return next()
-  }
+// function checkauthenticated(req, res, next) {
+//   if (req.session && req.session.user) {
+//     return next()
+//   }
 
-  res.redirect('/login')
-}
+//   res.redirect('/login')
+// }
 
-function checknotauthenticated(req, res, next) {
-  if (req.session && req.session.user) {
-    return res.redirect('/upload')
-  }
-  next()
-}
+// function checknotauthenticated(req, res, next) {
+//   if (req.session && req.session.user) {
+//     return res.redirect('/upload')
+//   }
+//   next()
+// }
 
 
 // Download
