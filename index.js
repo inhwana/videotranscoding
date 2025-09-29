@@ -179,14 +179,23 @@ function checknotauthenticated(req, res, next) {
 }
 
 
-const secretName = "n11908157-clientSecret"
+
 
 const client = new SecretsManager.SecretsManagerClient({
     region: "ap-southeast-2"
 })
 
 
-async function main() {
+
+const {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} = require("@aws-sdk/client-secrets-manager");
+
+const secretName = "n11908157-secretForClient";
+
+
+async function getSecret() {
     try {
         response = await client.send(
             new SecretsManager.GetSecretValueCommand({
@@ -203,6 +212,6 @@ async function main() {
 
 //Default
 app.listen(3000, () => {
-    main();
+    getSecret();
 })
 console.log("Port Connected")
