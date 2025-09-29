@@ -196,38 +196,6 @@ const getSecrets = async () => {
 }
 
 
-async function getClientSecret() {
-    try {
-        response = await client.send(
-            new SecretsManager.GetSecretValueCommand({
-                SecretId: "n11908157-secretForClient"
-            })
-        )
-        clientSecret = response.SecretString;
-        console.log(clientSecret)
-    }
-    catch(error) {
-        console.log(error)
-    }
-}
-
-
-
-async function getClientId() {
-    try {
-        response = await client.send(
-            new SecretsManager.GetSecretValueCommand({
-                SecretId: "n11908157-clientId"
-            })
-        )
-        clientId = response.SecretString;
-        console.log(clientId)
-    }
-    catch(error) {
-        console.log(error)
-    }
-}
-
 
 //Default
 // app.listen(3000, () => {
@@ -237,7 +205,7 @@ async function getClientId() {
 // console.log("Port Connected")
 
 async function startServer() {
-//   await getSecrets();
+  await getSecrets();
 
   // Configure session middleware with the clientSecret
   app.use(session({
