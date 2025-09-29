@@ -30,15 +30,7 @@ initializepassport(
     username =>  users.find(user => user.username === username),
     id => users.find(user => user.id === id),
 )
-app.use(flash())
-app.use(session({
-    secret: process.env.SESSIONKEY,
-    resave: false,
-    saveUninitialized: false
-}))
-const users =[]
-app.use(passport.initialize())
-app.use(passport.session())
+
 /////
 
 
@@ -271,6 +263,16 @@ async function startServer() {
     saveUninitialized: false,
     cookie: { secure: false } // change to true if using HTTPS
   }));
+
+  app.use(flash())
+    app.use(session({
+    secret: process.env.SESSIONKEY,
+    resave: false,
+    saveUninitialized: false
+}))
+    const users =[]
+    app.use(passport.initialize())
+    app.use(passport.session())
 
   app.get('/', (req, res) => {
     res.send(`ClientId: ${clientId}`);
