@@ -203,7 +203,7 @@ async function getSecret() {
                 SecretId: secretName
             })
         )
-        clientSecret = response.secretString;
+        clientSecret = response.SecretString;
         console.log(clientSecret)
     }
     catch(error) {
