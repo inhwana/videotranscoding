@@ -12,7 +12,7 @@ const initializepassport = require('./passportconfig')
 const S3 = require("@aws-sdk/client-s3") // AWS S3
 const bucketName = 'n10851879-test' // Test Bucket Name
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
-const {} = require("./auth.js")
+const { cognitoSignUp } = require("./auth.js")
 
 // router for routes
 
@@ -141,7 +141,10 @@ app.get('/register',checknotauthenticated ,(req, res)=>{
 })
 
 app.post('/register',checknotauthenticated,async(req, res)=>{
+    const {username, password, email} = req.body;
     try {
+
+        cognitoSignUp(username, password, email)
         const hashedpassword = await bcrypt.hash(req.body.password,10)
         users.push({
             id: Date.now().toString(),
@@ -192,8 +195,31 @@ const {
   GetSecretValueCommand,
 } = require("@aws-sdk/client-secrets-manager");
 
-
+// store secrets in memory!
 let clientSecret;
+let clientId;
+
+const getSecrets = async () => { 
+    try {
+        const secretCommand = new GetSecretValueCommand({ SecretId: "n11908157-secretForClient" })
+        const secretResponse = await client.send(secretCommand)
+        clientSecret = secretResponse.SecretString;
+
+
+        const idCommand = new GetSecretValueCommand({ SecretId: "n11908157-clientId" })
+        const idResponse = await client.send(idCommand)
+        clientId = idResponse.SecretString;
+
+        console.log("fetched secrets!!")
+    }
+    catch (err) {
+        console.error(err);
+        process.exit(1)
+
+    }
+   
+}
+
 
 async function getClientSecret() {
     try {
@@ -210,7 +236,7 @@ async function getClientSecret() {
     }
 }
 
-let clientId;
+
 
 async function getClientId() {
     try {
@@ -229,8 +255,30 @@ async function getClientId() {
 
 
 //Default
-app.listen(3000, () => {
-    getClientSecret();
-    getClientId();
-})
-console.log("Port Connected")
+// app.listen(3000, () => {
+//     getClientSecret();
+//     getClientId();
+// })
+// console.log("Port Connected")
+
+async function startServer() {
+  await getSecrets();
+
+  // Configure session middleware with the clientSecret
+  app.use(session({
+    secret: clientSecret,   // <-- important!
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } // change to true if using HTTPS
+  }));
+
+  app.get('/', (req, res) => {
+    res.send(`ClientId: ${clientId}`);
+  });
+
+  app.listen(3000, () => {
+    console.log("Server running on port 3000");
+  });
+}
+
+startServer();
