@@ -169,7 +169,8 @@ app.post('/register', async(req, res)=>{
 // console.log("Port Connected")
 
 async function startServer() {
-  await getSecrets();
+  const { clientId, clientSecret } = await getSecrets(); // <-- destructure from result
+
     // const clientId = "dktj13anu4sv0m465jemi791c";
     // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
