@@ -1,14 +1,10 @@
 const express = require('express')
 const multer = require('multer')
 const ffmpeg = require('fluent-ffmpeg')
-const bcrypt = require('bcrypt')
-const passport = require('passport')
-const flash = require('express-flash')
 const session = require('express-session')
 const dotenv = require('dotenv')
 const fs = require('fs')
 const path = require('path')
-const initializepassport = require('./passportconfig')
 const S3 = require("@aws-sdk/client-s3") // AWS S3
 const bucketName = 'n10851879-test' // Test Bucket Name
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
@@ -24,12 +20,6 @@ app.use(express.urlencoded({ extended: true })); // To get forms from EJS
 dotenv.config() // Configuratio
 
 
-/////
-initializepassport(
-    passport, 
-    username =>  users.find(user => user.username === username),
-    id => users.find(user => user.id === id),
-)
 
 /////
 
@@ -118,7 +108,7 @@ app.get('/', checknotauthenticated,(req, res)=>{
 })
 
 // this is the login thing that you should do/check/add your aws thing to!!
-app.post('/', checknotauthenticated,passport.authenticate('local',{
+app.post('/', checknotauthenticated,{
     successRedirect:'/upload',
     failureRedrect:'/login',
     failureFlash:true
@@ -137,12 +127,7 @@ app.post('/register',checknotauthenticated,async(req, res)=>{
     try {
 
         cognitoSignUp(username, password, email)
-        const hashedpassword = await bcrypt.hash(req.body.password,10)
-        users.push({
-            id: Date.now().toString(),
-            username: req.body.username,
-            password: hashedpassword,
-        })
+      
         res.redirect('/')
     } catch (error) {
         res.redirect('/register')
@@ -157,9 +142,8 @@ app.post('/register',checknotauthenticated,async(req, res)=>{
 
 
 
-
 function checkauthenticated(req, res, next) {
-  if (req.isAuthenticated()) {
+  if (req.session && req.session.user) {
     return next()
   }
 
@@ -167,8 +151,8 @@ function checkauthenticated(req, res, next) {
 }
 
 function checknotauthenticated(req, res, next) {
-  if (req.isAuthenticated()) {
-    return res.redirect('/')
+  if (req.session && req.session.user) {
+    return res.redirect('/upload')
   }
   next()
 }
@@ -264,15 +248,8 @@ async function startServer() {
     cookie: { secure: false } // change to true if using HTTPS
   }));
 
-  app.use(flash())
-    app.use(session({
-    secret: process.env.SESSIONKEY,
-    resave: false,
-    saveUninitialized: false
-}))
-    const users =[]
-    app.use(passport.initialize())
-    app.use(passport.session())
+ 
+
 
   app.get('/', (req, res) => {
     res.send(`ClientId: ${clientId}`);
