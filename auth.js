@@ -72,7 +72,7 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
     });
   }
 
-  const command = new CognitoInitiateAuthCommand({
+  const command = new Cognito.InitiateAuthCommand({
     AuthFlow: Cognito.AuthFlowType.USER_PASSWORD_AUTH,
     AuthParameters: {
       USERNAME: username,
