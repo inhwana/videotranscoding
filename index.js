@@ -135,7 +135,7 @@ async function bootstrap() {
   // this is the login thing that you should do/check/add your aws thing to!!
   app.post("/", async (req, res) => {
     const { username, password } = req.body;
-    res.render("upload");
+
     try {
       // const clientId = "dktj13anu4sv0m465jemi791c";
       // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
