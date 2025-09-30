@@ -20,88 +20,87 @@ const SecretsManager = require("@aws-sdk/client-secrets-manager");
 const { cognitoSignUp, cognitoLogin } = require("./auth.js")
 const { getSecrets } = require("./secrets.js")
 
+async function bootstrap() {
 
-//Default
-const app = express()
-app.set("view engine", "ejs")
-app.use(express.urlencoded({ extended: true })); // To get forms from EJS
-dotenv.config() // Configuratio
+    //Default
+    const app = express()
+    app.set("view engine", "ejs")
+    app.use(express.urlencoded({ extended: true })); // To get forms from EJS
+    dotenv.config() // Configuratio
 
-// const clientId = "dktj13anu4sv0m465jemi791c";
-// const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
-
-const setUpSecrets = async () => {
+    // const clientId = "dktj13anu4sv0m465jemi791c";
+    // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
 
     const {clientId, clientSecret} = await getSecrets();
     app.use(session({
-        secret: clientSecret,   
-        resave: false,
-        saveUninitialized: false,
-        cookie: { secure: false }
+    secret: clientSecret,   
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false }
     }));
 
-}
-
-setUpSecrets();
-
-app.use(express.json()) // For parsing json
 
 
+    setUpSecrets();
+
+    app.use(express.json()) // For parsing json
 
 
 
 
-//Upload page
-app.get('/upload',(req,res) =>{
+
+
+    //Upload page
+    app.get('/upload',(req,res) =>{
     res.render("upload")
-})
+    })
 
-//S3 Upload
-app.post('/upload', async (req,res)=>{
+    //S3 Upload
+    app.post('/upload', async (req,res)=>{
     // Return Upload Presigned URL
     const {filename} = req.body
     //const {filename, contentType} = req.body
     try {
-        const command = new S3.PutObjectCommand({
-                Bucket: bucketName,
-                Key: filename,
-                //ContentType: contentType
-            });
-        const presignedURL = await S3Presigner.getSignedUrl(s3Client, command, {expiresIn: 3600} );
-        console.log(presignedURL);
-        //console.log("Received:", filename, contentType);
-        res.json({url :presignedURL})
+    const command = new S3.PutObjectCommand({
+            Bucket: bucketName,
+            Key: filename,
+            //ContentType: contentType
+        });
+    const presignedURL = await S3Presigner.getSignedUrl(s3Client, command, {expiresIn: 3600} );
+    console.log(presignedURL);
+    //console.log("Received:", filename, contentType);
+    res.json({url :presignedURL})
     } catch (err) {
-        console.log(err);
+    console.log(err);
     }
-})
+    })
 
-// Transcode the video from S3
-app.post('/transcode', async (req,res) =>{
+    // Transcode the video from S3
+    app.post('/transcode', async (req,res) =>{
     const {filename} = req.body
     let transcodedkey = `transcoded${filename}`
     let response
 
     // Create and send a command to read an object, Download the video from S3
     try {
-        response = await s3Client.send(
-            new S3.GetObjectCommand({
-                Bucket: bucketName,
-                Key: filename,
-            }))
+    response = await s3Client.send(
+        new S3.GetObjectCommand({
+            Bucket: bucketName,
+            Key: filename,
+        }))
     const video = response.Body
     const videostream = new PassThrough()
 
     //Creating Upload, uploading mp4 video
     const uploads3 = new Upload({
-        client: s3Client,
-        params: {
-            Bucket: bucketName,
-            Key:transcodedkey,
-            Body: videostream,
-            ContentType: 'video/mp4'
-        }
+    client: s3Client,
+    params: {
+        Bucket: bucketName,
+        Key:transcodedkey,
+        Body: videostream,
+        ContentType: 'video/mp4'
+    }
     })
 
     // Transcoding Using FFMPEG
@@ -116,7 +115,7 @@ app.post('/transcode', async (req,res) =>{
     return;
     })
     .on('end', ()=>{
-        console.log("Transcoding Complete")
+    console.log("Transcoding Complete")
     })
     .pipe(videostream, {end: true})
 
@@ -125,65 +124,65 @@ app.post('/transcode', async (req,res) =>{
 
     // Create a pre-signed URL for reading an object
     const command = new S3.GetObjectCommand({
-            Bucket: bucketName,
-            Key: transcodedkey,
-            ResponseContentDisposition: 'attachment; filename="transcodedvideo.mp4"', // Used for directly downloading from presigned URL
-        });
+        Bucket: bucketName,
+        Key: transcodedkey,
+        ResponseContentDisposition: 'attachment; filename="transcodedvideo.mp4"', // Used for directly downloading from presigned URL
+    });
     const downloadpresignedURL = await S3Presigner.getSignedUrl(s3Client, command, {expiresIn: 3600} );
     res.json({url :downloadpresignedURL})
     console.log(downloadpresignedURL)
 
     // Delete Original Video    
     const data = await s3Client.send(new DeleteObjectCommand({
-        Bucket: bucketName,
-        Key: filename
+    Bucket: bucketName,
+    Key: filename
     }));
     console.log("Success. Object deleted.", data);
     // Delete Original Video 
 
     }catch (err) {
-        console.log(err);
+    console.log(err);
     }
-})
+    })
 
 
 
-//Login
-app.get('/',(req, res)=>{    
+    //Login
+    app.get('/',(req, res)=>{    
     res.render("login")
-})
+    })
 
-// this is the login thing that you should do/check/add your aws thing to!!
-app.post('/',async (req, res)=>{
+    // this is the login thing that you should do/check/add your aws thing to!!
+    app.post('/',async (req, res)=>{
     const {username, password} = req.body;
-        res.render("upload")
-        try {
-        // const clientId = "dktj13anu4sv0m465jemi791c";
-        // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
+    res.render("upload")
+    try {
+    // const clientId = "dktj13anu4sv0m465jemi791c";
+    // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
-        const {clientId, clientSecret} = await getSecrets();
-        await cognitoLogin(clientId, clientSecret, username, password)
-        req.session.username=username;
-        res.redirect('/upload');
-        
-        } catch (error) {
-            console.log(error)
-            // res.redirect('/register')
-        }
+    const {clientId, clientSecret} = await getSecrets();
+    await cognitoLogin(clientId, clientSecret, username, password)
+    req.session.username=username;
+    res.redirect('/upload');
+
+    } catch (error) {
+        console.log(error)
+        // res.redirect('/register')
+    }
 
 
-})
+    })
 
-app.get('/confirm', (req, res) => {
+    app.get('/confirm', (req, res) => {
     res.render("confirm")
-})
+    })
 
-//Register
-app.get('/register' ,(req, res)=>{    
+    //Register
+    app.get('/register' ,(req, res)=>{    
     res.render("register")
-})
+    })
 
-app.post('/register', async(req, res)=>{
+    app.post('/register', async(req, res)=>{
     const {username, password, email} = req.body;
     console.log("Password received:", password);
     console.log("Length:", password.length);
@@ -193,28 +192,29 @@ app.post('/register', async(req, res)=>{
     console.log("Has special:", /[^A-Za-z0-9]/.test(password));
 
     try {
-        // const clientId = "dktj13anu4sv0m465jemi791c";
-        // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
+    // const clientId = "dktj13anu4sv0m465jemi791c";
+    // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
-        const {clientId, clientSecret} = await getSecrets();
-        await cognitoSignUp(clientId, clientSecret, username, password, email)
-        req.session.username=username;
-        res.redirect('/confirm');
-        
+    const {clientId, clientSecret} = await getSecrets();
+    await cognitoSignUp(clientId, clientSecret, username, password, email)
+    req.session.username=username;
+    res.redirect('/confirm');
+
     } catch (error) {
-        console.log(error)
-        // res.redirect('/register')
+    console.log(error)
+    // res.redirect('/register')
     }
 
 
-})
+    })
 
 
 
-app.listen(3000, () => {
-console.log("Server running on port 3000");
-});
+    app.listen(3000, () => {
+    console.log("Server running on port 3000");
+    });
 
 
-startServer();
+}
 
+bootstrap();
