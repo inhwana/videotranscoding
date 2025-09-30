@@ -52,7 +52,7 @@ const confirmWithCode = async (
   });
   const command2 = new Cognito.ConfirmSignUpCommand({
     ClientId: clientId,
-    SecretHash: gnerateSeecretHash(clientId, clientSecret, username),
+    SecretHash: generateSecretHash(clientId, clientSecret, username),
     Username: username,
     ConfirmationCode: confirmationCode,
   });
