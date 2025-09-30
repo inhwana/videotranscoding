@@ -42,7 +42,7 @@ async function bootstrap() {
 
 
 
-    setUpSecrets();
+
 
     app.use(express.json()) // For parsing json
 
