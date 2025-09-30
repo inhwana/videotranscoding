@@ -77,7 +77,7 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
     AuthParameters: {
       USERNAME: username,
       PASSWORD: password,
-      SECRET_HASH: secretHash(clientId, clientSecret, username),
+      SECRET_HASH: generateSecretHash(clientId, clientSecret, username),
     },
     ClientId: clientId,
   });
