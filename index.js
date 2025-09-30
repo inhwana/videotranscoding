@@ -180,12 +180,7 @@ async function bootstrap() {
       // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
       const { clientId, clientSecret } = await getSecrets();
-      await confirmWithCode(
-        clientId,
-        clientSecret,
-        req.session.username,
-        confirmWithCode
-      );
+      await confirmWithCode(clientId, clientSecret, req.session.username, code);
 
       res.redirect("/login");
     } catch (error) {
