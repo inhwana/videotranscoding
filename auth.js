@@ -92,7 +92,7 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
   const IdTokenVerifyResult = await idVerifier.verify(IdToken);
   console.log(IdTokenVerifyResult);
 
-  return response;
+  return res;
 };
 
 const verifyToken = async (req, res, next) => {
