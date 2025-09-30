@@ -90,6 +90,25 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
   console.log(IdTokenVerifyResult);
 };
 
+const verifyToken = async (token) => {
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+  try {
+    const verifier = CognitoJwtVerifier.create({
+      userPoolId: userPoolId,
+      tokenUse: "id",
+      clientId: clientId,
+    });
+    const payload = await verifier.verify(token);
+    req.user = payload; // Attach user info if needed
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(401).json({ error: "Invalid token" });
+  }
+};
+
 module.exports = {
   generateSecretHash,
   cognitoSignUp,
