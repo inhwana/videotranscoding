@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const Cognito = require("@aws-sdk/client-cognito-identity-provider");
+const jwt = require("aws-jwt-verify");
 const crypto = require("crypto");
 
 
@@ -37,14 +38,34 @@ const cognitoSignUp = async (clientId, clientSecret, username, password, email) 
 }
 
 
-const idVerifier = jwt.CognitoJwtVerifier.create({
-    userPoolId: "ap-southeast-2_VOCBnVFNo",
-    tokenUse: "id",
-    clientId: clientId
-})
+const confirmWithCode = async (clientId, clientSecret, username, confirmationCode) => {
+    const client = new Cognito.CognitoIdentityProviderClient({region: 'ap-southeast-2'});
+    const command2 = new Cognito.ConfirmSignUpCommand({
+        Client: clientId,
+        SecretHash: secretHash(clientId, clientSecret, username),
+        Username: username,
+        ConfirmationCode: confirmationCode,
+    });
 
-const cognitoLogin = async(clientId, clientSecret, username, password, email) =>
+    const res = await client.send(command);
+    console.log(res2);
+    
+}
+
+
+let idVerifier;
+
+const cognitoLogin = async(clientId, clientSecret, username, password) =>
 {
+    if (!idVerifier)
+    {
+        idVerifier = jwt.CognitoJwtVerifier.create({
+            userPoolId: userPoolId,
+            tokenUse: "id",
+            clientId: clientId,
+        });
+    }
+
     const command = new CognitoInitiateAuthCommand({
         AuthFlow: Cognito.AuthFlowType.USER_PASSWORD_AUTH,
         AuthParameters: {
@@ -58,10 +79,13 @@ const cognitoLogin = async(clientId, clientSecret, username, password, email) =>
     res = await client.send(command);
     console.log(res);
 
-    const accessToken = res.AuthenticationResult.AccessToken;
-    const accessTokenVerifyResult = await accessVerifier.verify(accessToken);
-    console.log(accessTokenVerifyResult);
+    const IdToken = res.AuthenticationResult.IdToken;
+    const IdTokenVerifyResult = await idVerifier.verify(IdToken);
+    console.log(IdTokenVerifyResult);
 }
 
-module.exports = {generateSecretHash, cognitoSignUp}
+
+
+
+module.exports = {generateSecretHash, cognitoSignUp, cognitoLogin}
 

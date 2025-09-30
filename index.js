@@ -17,7 +17,7 @@ s3Client = new S3.S3Client({ region: 'ap-southeast-2'})
 
 //AWS Secrets
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
-const { cognitoSignUp } = require("./auth.js")
+const { cognitoSignUp, cognitoLogin } = require("./auth.js")
 const { getSecrets } = require("./secrets.js")
 
 
@@ -26,6 +26,25 @@ const app = express()
 app.set("view engine", "ejs")
 app.use(express.urlencoded({ extended: true })); // To get forms from EJS
 dotenv.config() // Configuratio
+
+// const clientId = "dktj13anu4sv0m465jemi791c";
+// const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
+
+const setUpSecrets = async () => {
+
+
+    const {clientId, clientSecret} = await getSecrets();
+    app.use(session({
+        secret: clientSecret,   
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: false }
+    }));
+
+}
+
+setUpSecrets();
+
 app.use(express.json()) // For parsing json
 
 
@@ -135,11 +154,29 @@ app.get('/',(req, res)=>{
 })
 
 // this is the login thing that you should do/check/add your aws thing to!!
-app.post('/',(req, res)=>{
-    res.render("upload")
+app.post('/',async (req, res)=>{
+    const {username, password} = req.body;
+        res.render("upload")
+        try {
+        // const clientId = "dktj13anu4sv0m465jemi791c";
+        // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
+
+        const {clientId, clientSecret} = await getSecrets();
+        await cognitoLogin(clientId, clientSecret, username, password)
+        req.session.username=username;
+        res.redirect('/upload');
+        
+        } catch (error) {
+            console.log(error)
+            // res.redirect('/register')
+        }
+
 
 })
 
+app.get('/confirm', (req, res) => {
+    res.render("confirm")
+})
 
 //Register
 app.get('/register' ,(req, res)=>{    
@@ -161,8 +198,9 @@ app.post('/register', async(req, res)=>{
 
         const {clientId, clientSecret} = await getSecrets();
         await cognitoSignUp(clientId, clientSecret, username, password, email)
-      
-        // res.redirect('/')
+        req.session.username=username;
+        res.redirect('/confirm');
+        
     } catch (error) {
         console.log(error)
         // res.redirect('/register')
@@ -172,28 +210,11 @@ app.post('/register', async(req, res)=>{
 })
 
 
-async function startServer() {
-  const { clientId, clientSecret } = await getSecrets(); // <-- destructure from result
 
-    // const clientId = "dktj13anu4sv0m465jemi791c";
-    // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
+app.listen(3000, () => {
+console.log("Server running on port 3000");
+});
 
-
-  // Configure session middleware with the clientSecret
-  app.use(session({
-    secret: clientSecret,   
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: false }
-  }));
-
- 
-
-
-  app.listen(3000, () => {
-    console.log("Server running on port 3000");
-  });
-}
 
 startServer();
 
