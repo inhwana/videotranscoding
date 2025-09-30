@@ -166,7 +166,7 @@ async function bootstrap() {
       // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
       const { clientId, clientSecret } = await getSecrets();
-      await confirmWithCode(clientId, clientSecret, username, confirmWithCode);
+      await confirmWithCode(clientId, clientSecret, username, code);
       res.json({ success: true, message: "Confirmation successful" });
     } catch (error) {
       console.log(error);

@@ -90,18 +90,20 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
   console.log(IdTokenVerifyResult);
 };
 
-const verifyToken = async (token) => {
+const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
   if (!token) {
     return res.status(401).json({ error: "No token provided" });
   }
   try {
     const verifier = CognitoJwtVerifier.create({
-      userPoolId: userPoolId,
+      userPoolId: "ap-southeast-2_VOCBnVFNo",
       tokenUse: "id",
       clientId: clientId,
     });
     const payload = await verifier.verify(token);
-    req.user = payload; // Attach user info if needed
+    req.user = payload;
     next();
   } catch (error) {
     console.error(error);
