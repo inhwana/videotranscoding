@@ -160,7 +160,6 @@ async function bootstrap() {
 
   app.post("/confirm", async (req, res) => {
     const { username, code } = req.body;
-    res.render("upload");
     try {
       // const clientId = "dktj13anu4sv0m465jemi791c";
       // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
