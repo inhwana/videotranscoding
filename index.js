@@ -181,18 +181,14 @@ async function startServer() {
 
   // Configure session middleware with the clientSecret
   app.use(session({
-    secret: clientSecret,   // <-- important!
+    secret: clientSecret,   
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // change to true if using HTTPS
+    cookie: { secure: false }
   }));
 
  
 
-
-  app.get('/', (req, res) => {
-    res.send(`ClientId: ${clientId}`);
-  });
 
   app.listen(3000, () => {
     console.log("Server running on port 3000");

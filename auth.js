@@ -37,5 +37,31 @@ const cognitoSignUp = async (clientId, clientSecret, username, password, email) 
 }
 
 
+const idVerifier = jwt.CognitoJwtVerifier.create({
+    userPoolId: "ap-southeast-2_VOCBnVFNo",
+    tokenUse: "id",
+    clientId: clientId
+})
+
+const cognitoLogin = async(clientId, clientSecret, username, password, email) =>
+{
+    const command = new CognitoInitiateAuthCommand({
+        AuthFlow: Cognito.AuthFlowType.USER_PASSWORD_AUTH,
+        AuthParameters: {
+      USERNAME: username,
+      PASSWORD: password,
+      SECRET_HASH: secretHash(clientId, clientSecret, username),
+    },
+    ClientId: clientId
+    });
+
+    res = await client.send(command);
+    console.log(res);
+
+    const accessToken = res.AuthenticationResult.AccessToken;
+    const accessTokenVerifyResult = await accessVerifier.verify(accessToken);
+    console.log(accessTokenVerifyResult);
+}
+
 module.exports = {generateSecretHash, cognitoSignUp}
 
