@@ -91,6 +91,8 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
   const IdToken = res.AuthenticationResult.IdToken;
   const IdTokenVerifyResult = await idVerifier.verify(IdToken);
   console.log(IdTokenVerifyResult);
+
+  return response;
 };
 
 const verifyToken = async (req, res, next) => {
