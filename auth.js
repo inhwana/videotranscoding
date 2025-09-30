@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const Cognito = require("@aws-sdk/client-cognito-identity-provider");
+const jwt = require("aws-jwt-verify");
 const crypto = require("crypto");
 
 
@@ -37,5 +38,54 @@ const cognitoSignUp = async (clientId, clientSecret, username, password, email) 
 }
 
 
-module.exports = {generateSecretHash, cognitoSignUp}
+const confirmWithCode = async (clientId, clientSecret, username, confirmationCode) => {
+    const client = new Cognito.CognitoIdentityProviderClient({region: 'ap-southeast-2'});
+    const command2 = new Cognito.ConfirmSignUpCommand({
+        Client: clientId,
+        SecretHash: secretHash(clientId, clientSecret, username),
+        Username: username,
+        ConfirmationCode: confirmationCode,
+    });
+
+    const res = await client.send(command);
+    console.log(res2);
+    
+}
+
+
+let idVerifier;
+
+const cognitoLogin = async(clientId, clientSecret, username, password) =>
+{
+    if (!idVerifier)
+    {
+        idVerifier = jwt.CognitoJwtVerifier.create({
+            userPoolId: userPoolId,
+            tokenUse: "id",
+            clientId: clientId,
+        });
+    }
+
+    const command = new CognitoInitiateAuthCommand({
+        AuthFlow: Cognito.AuthFlowType.USER_PASSWORD_AUTH,
+        AuthParameters: {
+      USERNAME: username,
+      PASSWORD: password,
+      SECRET_HASH: secretHash(clientId, clientSecret, username),
+    },
+    ClientId: clientId
+    });
+
+    res = await client.send(command);
+    console.log(res);
+
+    const IdToken = res.AuthenticationResult.IdToken;
+    const IdTokenVerifyResult = await idVerifier.verify(IdToken);
+    console.log(IdTokenVerifyResult);
+}
+
+
+
+
+module.exports = {generateSecretHash, cognitoSignUp, cognitoLogin}
 

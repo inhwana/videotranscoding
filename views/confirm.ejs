@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Account</title>
+</head>
+
+<body>
+    <h1>Confirm Your Account</h1>
+    <form method="POST" action="/confirm">
+        <label for="username">Username:</label>
+        <input type="text" name="username" id="username" required><br><br>
+
+        <label for="code">Confirmation Code:</label>
+        <input type="text" name="code" id="code" required><br><br>
+
+        <button type="submit">Confirm</button>
+    </form>
+    <a href="/">Back to Login</a>
+</body>
+
+</html>
