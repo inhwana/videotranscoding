@@ -169,7 +169,7 @@ async function bootstrap() {
   });
 
   app.get("/confirm", (req, res) => {
-    req.render(confirm);
+    req.render("confirm");
   });
 
   app.post("/confirm", async (req, res) => {
