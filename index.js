@@ -82,7 +82,7 @@ async function bootstrap() {
 
       // Create a pre-signed URL for reading an object
       const command = new S3.GetObjectCommand({
-        Bucket: bucketName,s
+        Bucket: bucketName,
         Key: transcodedkey,
         ResponseContentDisposition:
           'attachment; filename="transcodedvideo.mp4"', // Used for directly downloading from presigned URL
