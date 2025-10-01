@@ -92,6 +92,29 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
   const IdToken = res.AuthenticationResult.IdToken;
   const IdTokenVerifyResult = await idVerifier.verify(IdToken);
   console.log(IdTokenVerifyResult);
+
+  return res;
+};
+
+const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+  try {
+    const verifier = CognitoJwtVerifier.create({
+      userPoolId: "ap-southeast-2_VOCBnVFNo",
+      tokenUse: "id",
+      clientId: clientId,
+    });
+    const payload = await verifier.verify(token);
+    req.user = payload;
+    next();
+  } catch (error) {
+    console.error(error);
+    res.status(401).json({ error: "Invalid token" });
+  }
 };
 
 module.exports = {

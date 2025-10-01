@@ -1,7 +1,6 @@
 const express = require("express");
 const multer = require("multer");
 const ffmpeg = require("fluent-ffmpeg");
-const session = require("express-session");
 const dotenv = require("dotenv");
 const fs = require("fs");
 const path = require("path");
@@ -20,32 +19,19 @@ const SecretsManager = require("@aws-sdk/client-secrets-manager");
 const { cognitoSignUp, cognitoLogin, confirmWithCode } = require("./auth.js");
 const { getSecrets } = require("./secrets.js");
 
+const cors = require("cors");
+
 async function bootstrap() {
   //Default
   const app = express();
-  app.set("view engine", "ejs");
-  app.use(express.urlencoded({ extended: true })); // To get forms from EJS
+
+  app.use(express.json()); // To get forms from EJS
   dotenv.config(); // Configuratio
 
   // const clientId = "dktj13anu4sv0m465jemi791c";
   // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
   const { clientId, clientSecret } = await getSecrets();
-  app.use(
-    session({
-      secret: clientSecret,
-      resave: false,
-      saveUninitialized: false,
-      cookie: { secure: false },
-    })
-  );
-
-  app.use(express.json()); // For parsing json
-
-  //Upload page
-  app.get("/upload", (req, res) => {
-    res.render("upload");
-  });
 
   //S3 Upload
   app.post("/upload", async (req, res) => {
@@ -144,64 +130,49 @@ async function bootstrap() {
       console.log(err);
     }
   });
-
-  //Login
-  app.get("/", (req, res) => {
-    res.render("login");
-  });
-
   // this is the login thing that you should do/check/add your aws thing to!!
   app.post("/", async (req, res) => {
     const { username, password } = req.body;
-    res.render("upload");
+
     try {
       // const clientId = "dktj13anu4sv0m465jemi791c";
       // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
       const { clientId, clientSecret } = await getSecrets();
-      await cognitoLogin(clientId, clientSecret, username, password);
-      req.session.username = username;
-      res.redirect("/upload");
+      const result = await cognitoLogin(
+        clientId,
+        clientSecret,
+        username,
+        password
+      );
+      res.json({
+        idToken: result.AuthenticationResult.IdToken,
+        accessToken: result.AuthenticationResult.AccessToken,
+        refreshToken: result.AuthenticationResult.RefreshToken,
+      });
     } catch (error) {
       console.log(error);
-      // res.redirect('/register')
+      res.status(400).json({ error: "Login failed" });
     }
-  });
-
-  app.get("/confirm", (req, res) => {
-    res.render("confirm");
   });
 
   app.post("/confirm", async (req, res) => {
-    const { code } = req.body;
-    res.render("upload");
+    const { username, code } = req.body;
     try {
       // const clientId = "dktj13anu4sv0m465jemi791c";
       // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
       const { clientId, clientSecret } = await getSecrets();
-      await confirmWithCode(clientId, clientSecret, req.session.username, code);
-
-      res.redirect("/login");
+      await confirmWithCode(clientId, clientSecret, username, code);
+      res.json({ success: true, message: "Confirmation successful" });
     } catch (error) {
       console.log(error);
-      // res.redirect('/register')
+      res.status(400).json({ error: "Confirmation failed" });
     }
-  });
-
-  //Register
-  app.get("/register", (req, res) => {
-    res.render("register");
   });
 
   app.post("/register", async (req, res) => {
     const { username, password, email } = req.body;
-    console.log("Password received:", password);
-    console.log("Length:", password.length);
-    console.log("Has uppercase:", /[A-Z]/.test(password));
-    console.log("Has lowercase:", /[a-z]/.test(password));
-    console.log("Has number:", /[0-9]/.test(password));
-    console.log("Has special:", /[^A-Za-z0-9]/.test(password));
 
     try {
       // const clientId = "dktj13anu4sv0m465jemi791c";
@@ -209,11 +180,13 @@ async function bootstrap() {
 
       const { clientId, clientSecret } = await getSecrets();
       await cognitoSignUp(clientId, clientSecret, username, password, email);
-      req.session.username = username;
-      res.redirect("/confirm");
+      res.json({
+        success: true,
+        message: "Registration successful, confirm your email",
+      });
     } catch (error) {
-      console.log(error);
-      // res.redirect('/register')
+      console.error(error);
+      res.status(400).json({ error: "Registration failed" });
     }
   });
 
