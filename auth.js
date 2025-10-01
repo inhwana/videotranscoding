@@ -100,7 +100,7 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
-  const { clientId, clientSecret } = getSecrets();
+  const { clientId, clientSecret } = await getSecrets();
   if (!token) {
     return res.status(401).json({ error: "No token provided" });
   }
