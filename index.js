@@ -73,7 +73,7 @@ async function bootstrap() {
       console.log("S3 Object:", S3Object);
 
       const videoStream = new PassThrough();
-      S3Object.Body.pipe(videostream);
+      S3Object.Body.pipe(videoStream);
 
       const outputStream = new PassThrough();
 
