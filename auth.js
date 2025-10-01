@@ -4,6 +4,7 @@ const router = express.Router();
 const Cognito = require("@aws-sdk/client-cognito-identity-provider");
 const jwt = require("aws-jwt-verify");
 const crypto = require("crypto");
+const { getSecrets } = require("./secrets.js");
 
 // create a bash64 HMAC-SHA256 hash of username and client id for Amazon Cognito
 const generateSecretHash = (clientId, clientSecret, userName) => {
@@ -99,6 +100,7 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
+  const { clientId, clientSecret } = getSecrets();
   if (!token) {
     return res.status(401).json({ error: "No token provided" });
   }
