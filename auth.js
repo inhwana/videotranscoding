@@ -103,7 +103,7 @@ const verifyToken = async (req, res, next) => {
     return res.status(401).json({ error: "No token provided" });
   }
   try {
-    const verifier = CognitoJwtVerifier.create({
+    const verifier = jwt.CognitoJwtVerifier.create({
       userPoolId: "ap-southeast-2_VOCBnVFNo",
       tokenUse: "id",
       clientId: clientId,
