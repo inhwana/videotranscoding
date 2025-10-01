@@ -122,4 +122,5 @@ module.exports = {
   cognitoSignUp,
   cognitoLogin,
   confirmWithCode,
+  verifyToken,
 };

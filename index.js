@@ -16,7 +16,12 @@ s3Client = new S3.S3Client({ region: "ap-southeast-2" });
 
 //AWS Secrets
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
-const { cognitoSignUp, cognitoLogin, confirmWithCode } = require("./auth.js");
+const {
+  cognitoSignUp,
+  cognitoLogin,
+  confirmWithCodem,
+  verifyToken,
+} = require("./auth.js");
 const { getSecrets } = require("./secrets.js");
 
 const cors = require("cors");
@@ -34,7 +39,7 @@ async function bootstrap() {
   const { clientId, clientSecret } = await getSecrets();
 
   //S3 Upload
-  app.post("/upload", async (req, res) => {
+  app.post("/upload", verifyToken, async (req, res) => {
     // Return Upload Presigned URL
     const { filename } = req.body;
     //const {filename, contentType} = req.body
@@ -56,7 +61,7 @@ async function bootstrap() {
   });
 
   // Transcode the video from S3
-  app.post("/transcode", async (req, res) => {
+  app.post("/transcode", verifyToken, async (req, res) => {
     const { filename } = req.body;
     let transcodedkey = `transcoded${filename}`;
     let response;
