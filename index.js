@@ -72,7 +72,7 @@ async function bootstrap() {
 
       console.log("S3 Object:", S3Object);
 
-      const videostream = new PassThrough();
+      const videoStream = new PassThrough();
       S3Object.Body.pipe(videostream);
 
       const outputStream = new PassThrough();
@@ -91,7 +91,7 @@ async function bootstrap() {
       // Transcoding Using FFMPEG
       // Wrap in a promise so we can wait for ffmpeg completion
       await new Promise((resolve, reject) => {
-        ffmpeg(video)
+        ffmpeg(videoStream)
           .outputOptions("-movflags frag_keyframe+empty_moov")
           .videoCodec("libx264")
           .format("mp4")
