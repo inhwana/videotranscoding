@@ -72,11 +72,11 @@ async function bootstrap() {
 
       console.log("S3 Object:", S3Object);
 
-      const video = S3Object.Body;
-      S3Object.Body.pipe(videostream);
       const videostream = new PassThrough();
+      S3Object.Body.pipe(videostream);
 
-      const uploadStream = new PassThrough();
+      const outputStream = new PassThrough();
+
       //Creating Upload, uploading mp4 video
       const uploads3 = new Upload({
         client: s3Client,
@@ -104,7 +104,7 @@ async function bootstrap() {
             console.log("Transcoding Complete");
             resolve();
           })
-          .pipe(videostream, { end: true });
+          .pipe(outputStream, { end: true });
       });
 
       // Start Uploading
