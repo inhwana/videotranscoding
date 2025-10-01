@@ -33,6 +33,28 @@ async function bootstrap() {
 
   const { clientId, clientSecret } = await getSecrets();
 
+  //S3 Upload
+  app.post("/upload", async (req, res) => {
+    // Return Upload Presigned URL
+    const { filename } = req.body;
+    //const {filename, contentType} = req.body
+    try {
+      const command = new S3.PutObjectCommand({
+        Bucket: bucketName,
+        Key: filename,
+        //ContentType: contentType
+      });
+      const presignedURL = await S3Presigner.getSignedUrl(s3Client, command, {
+        expiresIn: 3600,
+      });
+      console.log(presignedURL);
+      //console.log("Received:", filename, contentType);
+      res.json({ url: presignedURL });
+    } catch (err) {
+      console.log(err);
+    }
+  });
+
   // Transcode the video from S3
   app.post("/transcode", async (req, res) => {
     const { filename } = req.body;
@@ -108,7 +130,6 @@ async function bootstrap() {
       console.log(err);
     }
   });
-
   // this is the login thing that you should do/check/add your aws thing to!!
   app.post("/", async (req, res) => {
     const { username, password } = req.body;
