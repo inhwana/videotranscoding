@@ -1,7 +1,6 @@
 const express = require("express");
 const multer = require("multer");
 const ffmpeg = require("fluent-ffmpeg");
-const session = require("express-session");
 const dotenv = require("dotenv");
 const fs = require("fs");
 const path = require("path");
@@ -85,20 +84,23 @@ async function bootstrap() {
       });
 
       // Transcoding Using FFMPEG
-      ffmpeg(video)
-        .outputOptions("-movflags frag_keyframe+empty_moov") // Used because MP4 does not work well with streams
-        .videoCodec("libx264")
-        .format("mp4")
-        .on("start", (cmd) => console.log("FFmpeg started:", cmd))
-        .on("error", (err) => {
-          console.error("Error:", err.message);
-          res.status(500).send("Transcoding Failed :(");
-          return;
-        })
-        .on("end", () => {
-          console.log("Transcoding Complete");
-        })
-        .pipe(videostream, { end: true });
+      // Wrap in a promise so we can wait for ffmpeg completion
+      await new Promise((resolve, reject) => {
+        ffmpeg(video)
+          .outputOptions("-movflags frag_keyframe+empty_moov")
+          .videoCodec("libx264")
+          .format("mp4")
+          .on("start", (cmd) => console.log("FFmpeg started:", cmd))
+          .on("error", (err) => {
+            console.error("FFmpeg error:", err.message);
+            reject(err);
+          })
+          .on("end", () => {
+            console.log("Transcoding Complete");
+            resolve();
+          })
+          .pipe(videostream, { end: true });
+      });
 
       // Start Uploading
       await uploads3.done();
