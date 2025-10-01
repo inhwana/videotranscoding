@@ -33,49 +33,22 @@ async function bootstrap() {
 
   const { clientId, clientSecret } = await getSecrets();
 
-  //S3 Upload
-  app.post("/upload", async (req, res) => {
-    // Return Upload Presigned URL
-    const { filename } = req.body;
-    //const {filename, contentType} = req.body
-    try {
-      const command = new S3.PutObjectCommand({
-        Bucket: bucketName,
-        Key: filename,
-        //ContentType: contentType
-      });
-      const presignedURL = await S3Presigner.getSignedUrl(s3Client, command, {
-        expiresIn: 3600,
-      });
-      console.log(presignedURL);
-      //console.log("Received:", filename, contentType);
-      res.json({ url: presignedURL });
-    } catch (err) {
-      console.log(err);
-    }
-  });
-
   // Transcode the video from S3
   app.post("/transcode", async (req, res) => {
     const { filename } = req.body;
     let transcodedkey = `transcoded${filename}`;
-    let S3Object;
+    let response;
 
     // Create and send a command to read an object, Download the video from S3
     try {
-      S3Object = await s3Client.send(
+      response = await s3Client.send(
         new S3.GetObjectCommand({
           Bucket: bucketName,
           Key: filename,
         })
       );
-
-      console.log("S3 Object:", S3Object);
-
-      const videoStream = new PassThrough();
-      S3Object.Body.pipe(videoStream);
-
-      const outputStream = new PassThrough();
+      const video = response.Body;
+      const videostream = new PassThrough();
 
       //Creating Upload, uploading mp4 video
       const uploads3 = new Upload({
@@ -83,36 +56,33 @@ async function bootstrap() {
         params: {
           Bucket: bucketName,
           Key: transcodedkey,
-          Body: videoStream,
+          Body: videostream,
           ContentType: "video/mp4",
         },
       });
 
       // Transcoding Using FFMPEG
-      // Wrap in a promise so we can wait for ffmpeg completion
-      await new Promise((resolve, reject) => {
-        ffmpeg(videoStream)
-          .outputOptions("-movflags frag_keyframe+empty_moov")
-          .videoCodec("libx264")
-          .format("mp4")
-          .on("start", (cmd) => console.log("FFmpeg started:", cmd))
-          .on("error", (err) => {
-            console.error("FFmpeg error:", err.message);
-            reject(err);
-          })
-          .on("end", () => {
-            console.log("Transcoding Complete");
-            resolve();
-          })
-          .pipe(outputStream, { end: true });
-      });
+      ffmpeg(video)
+        .outputOptions("-movflags frag_keyframe+empty_moov") // Used because MP4 does not work well with streams
+        .videoCodec("libx264")
+        .format("mp4")
+        .on("start", (cmd) => console.log("FFmpeg started:", cmd))
+        .on("error", (err) => {
+          console.error("Error:", err.message);
+          res.status(500).send("Transcoding Failed :(");
+          return;
+        })
+        .on("end", () => {
+          console.log("Transcoding Complete");
+        })
+        .pipe(videostream, { end: true });
 
       // Start Uploading
       await uploads3.done();
 
       // Create a pre-signed URL for reading an object
       const command = new S3.GetObjectCommand({
-        Bucket: bucketName,
+        Bucket: bucketName,s
         Key: transcodedkey,
         ResponseContentDisposition:
           'attachment; filename="transcodedvideo.mp4"', // Used for directly downloading from presigned URL
