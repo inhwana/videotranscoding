@@ -83,7 +83,7 @@ async function bootstrap() {
         params: {
           Bucket: bucketName,
           Key: transcodedkey,
-          Body: videostream,
+          Body: videoStream,
           ContentType: "video/mp4",
         },
       });
