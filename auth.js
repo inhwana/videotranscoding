@@ -67,6 +67,7 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
   const client = new Cognito.CognitoIdentityProviderClient({
     region: "ap-southeast-2",
   });
+
   if (!idVerifier) {
     idVerifier = jwt.CognitoJwtVerifier.create({
       userPoolId: "ap-southeast-2_VOCBnVFNo",
