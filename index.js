@@ -59,19 +59,20 @@ async function bootstrap() {
   app.post("/transcode", async (req, res) => {
     const { filename } = req.body;
     let transcodedkey = `transcoded${filename}`;
-    let response;
+    let S3Object;
 
     // Create and send a command to read an object, Download the video from S3
     try {
-      response = await s3Client.send(
+      S3Object = await s3Client.send(
         new S3.GetObjectCommand({
           Bucket: bucketName,
           Key: filename,
         })
       );
       const video = response.Body;
-      const videostream = new PassThrough();
+      const videostream = S3Object(new PassThrough());
 
+      const uploadStream = new PassThrough();
       //Creating Upload, uploading mp4 video
       const uploads3 = new Upload({
         client: s3Client,
