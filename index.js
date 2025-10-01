@@ -69,8 +69,8 @@ async function bootstrap() {
           Key: filename,
         })
       );
-      const video = response.Body;
-      const videostream = S3Object(new PassThrough());
+      const video = S3Object.Body;
+      const videostream = new PassThrough();
 
       const uploadStream = new PassThrough();
       //Creating Upload, uploading mp4 video
