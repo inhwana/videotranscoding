@@ -43,7 +43,9 @@ async function bootstrap() {
   // const clientId = "dktj13anu4sv0m465jemi791c";
   // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
-  const { clientId, clientSecret } = await getSecrets();
+  const { clientId, clientSecret, rdsUsername, rdsPassword } =
+    await getSecrets();
+  console.log(rdsUsername, rdsPassword);
   await initialiseVideoTable();
   //S3 Upload
   app.post("/upload", verifyToken, async (req, res) => {
