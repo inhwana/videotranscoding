@@ -32,7 +32,7 @@ const initialiseVideoTable = async () => {
     await client.query(`CREATE SCHEMA IF NOT EXISTS n11908157`);
     console.log("Schema n11908157 created or already exists");
     await client.query(`
-      CREATE TABLE IF NOT EXISTS n11908157.videos (
+      CREATE TABLE IF NOT EXISTS s142.videos (
         id TEXT PRIMARY KEY,
         userId TEXT,
         originalFileName TEXT,
@@ -56,7 +56,7 @@ const getUsersVideos = async (userId) => {
   try {
     const res = await client.query(
       `SELECT id, userId, originalFileName, storedFileName, uploadTimestamp, status, outputFileName
-       FROM n11908157.videos
+       FROM s142.videos
        WHERE userId = $1
        ORDER BY uploadTimestamp DESC`,
       [userId]
@@ -72,7 +72,7 @@ const updateVideoStatus = async (id, status, outputFileName) => {
   const client = await initDb();
   try {
     await client.query(
-      `UPDATE n11908157.videos SET status = $1, outputFileName = $2 WHERE id = $3`,
+      `UPDATE s142.videos SET status = $1, outputFileName = $2 WHERE id = $3`,
       [status, outputFileName, id]
     );
   } catch (err) {
@@ -95,7 +95,7 @@ const addVideo = async (metadata) => {
   } = metadata;
   try {
     await client.query(
-      `INSERT INTO n11908157.videos (id, userId, originalFileName, storedFileName, uploadTimestamp, status, outputFileName, requestedFormat)
+      `INSERT INTO s142.videos (id, userId, originalFileName, storedFileName, uploadTimestamp, status, outputFileName, requestedFormat)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         id,
@@ -118,10 +118,9 @@ const addVideo = async (metadata) => {
 const getVideo = async (id) => {
   const client = await initDb();
   try {
-    const res = await client.query(
-      `SELECT * FROM n11908157.videos WHERE id = $1`,
-      [id]
-    );
+    const res = await client.query(`SELECT * FROM s142.videos WHERE id = $1`, [
+      id,
+    ]);
     return res.rows[0];
   } catch (err) {
     console.error("Error fetching video:", err);
@@ -132,10 +131,10 @@ const getVideo = async (id) => {
 const addTranscript = async (transcript, id) => {
   const client = await initDb();
   try {
-    await client.query(
-      `UPDATE n11908157.videos SET transcript = $1 WHERE id = $2`,
-      [transcript, id]
-    );
+    await client.query(`UPDATE s142.videos SET transcript = $1 WHERE id = $2`, [
+      transcript,
+      id,
+    ]);
   } catch (err) {
     console.error("Error adding transcript:", err);
     throw err;
@@ -146,7 +145,7 @@ const getTranscript = async (id) => {
   const client = await initDb();
   try {
     const res = await client.query(
-      `SELECT transcript FROM n11908157.videos WHERE id = $1`,
+      `SELECT transcript FROM s142.videos WHERE id = $1`,
       [id]
     );
     return res.rows[0];
