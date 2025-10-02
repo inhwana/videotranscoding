@@ -49,6 +49,10 @@ async function bootstrap() {
     // Return Upload Presigned URL
     const { filename } = req.body;
     //const {filename, contentType} = req.body
+    const videoId = uuidv4();
+    const storedFileName = `${videoId}-${Date.now()}.${filename
+      .split(".")
+      .pop()}`;
     try {
       const command = new S3.PutObjectCommand({
         Bucket: bucketName,
@@ -88,7 +92,7 @@ async function bootstrap() {
   });
 
   // Transcode the video from S3
-  app.post("/api/transcode", verifyToken, async (req, res) => {
+  app.post("/transcode", verifyToken, async (req, res) => {
     const { videoId } = req.body;
     if (!videoId) {
       return res.status(400).json({ error: "Video ID is required" });
