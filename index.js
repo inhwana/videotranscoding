@@ -62,7 +62,7 @@ async function bootstrap() {
       .split(".")
       .pop()}`;
     try {
-      const command = new S3.PutObjectCommand({
+      const command = new PutObjectCommand({
         Bucket: bucketName,
         Key: storedFileName,
         //ContentType: contentType
