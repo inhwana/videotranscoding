@@ -15,7 +15,7 @@ const { Upload } = require("@aws-sdk/lib-storage");
 const { PassThrough } = require("stream");
 
 const bucketName = "n10851879-test"; // Test Bucket Name
-const s3Client = S3Client({ region: "ap-southeast-2" });
+const s3Client = new S3Client({ region: "ap-southeast-2" });
 
 //AWS Secrets
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
