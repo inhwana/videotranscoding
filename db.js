@@ -10,8 +10,8 @@ const initDb = async () => {
       host: "database-1-instance-1.ce2haupt2cta.ap-southeast-2.rds.amazonaws.com",
       port: 5432,
       database: "cohort_2025",
-      user: rdsUsername,
-      password: rdsPassword,
+      user: "s142",
+      password: "U6cDMmfQXYNs",
       ssl: { rejectUnauthorized: false },
     });
     try {
