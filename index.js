@@ -30,6 +30,7 @@ const {
   addVideo,
   updateVideoStatus,
   getUsersVideos,
+  getVideo,
 } = require("./db.js");
 
 async function bootstrap() {
