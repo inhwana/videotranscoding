@@ -114,7 +114,7 @@ async function bootstrap() {
           Key: storedFileName,
         })
       );
-      const video = response.Body;
+      const videoStream = response.Body;
       if (!videoStream) {
         throw new Error("No video data received from S3");
       }
