@@ -101,7 +101,7 @@ async function bootstrap() {
     }
     try {
       const videoMetadata = await getVideo(videoId);
-      if (!videoMetaData || videoMetadata.userId !== req.user.sub) {
+      if (!videoMetadata || videoMetadata.userId !== req.user.sub) {
         return res
           .status(403)
           .json({ error: "Video not found or unauthorized" });
