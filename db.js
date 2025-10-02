@@ -10,8 +10,8 @@ const initDb = async () => {
       host: "database-1-instance-1.ce2haupt2cta.ap-southeast-2.rds.amazonaws.com",
       port: 5432,
       database: "cohort_2025",
-      user: "s142",
-      password: "U6cDMmfQXYNs",
+      user: rdsUsername,
+      password: rdsPassword,
       ssl: { rejectUnauthorized: false },
     });
     try {
@@ -28,11 +28,35 @@ const initDb = async () => {
 const initialiseVideoTable = async () => {
   const client = await initDb();
   try {
-    // Create schema if it doesn't exist
-    await client.query(`CREATE SCHEMA IF NOT EXISTS n11908157`);
-    console.log("Schema n11908157 created or already exists");
+    // Check if schema exists
+    const schemaCheck = await client.query(
+      `SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 's142')`
+    );
+    if (!schemaCheck.rows[0].exists) {
+      console.error(
+        "Schema s142 does not exist. Contact your instructor to create the schema and grant permissions: " +
+          "CREATE SCHEMA s142; GRANT ALL ON SCHEMA s142 TO s142; GRANT CREATE, USAGE ON DATABASE cohort_2025 TO s142;"
+      );
+      throw new Error("Schema s142 does not exist");
+    }
+
+    // Check if videos table exists
+    const tableCheck = await client.query(
+      `SELECT EXISTS (
+         SELECT 1 
+         FROM information_schema.tables 
+         WHERE table_schema = 's142' 
+         AND table_name = 'videos'
+       )`
+    );
+    if (tableCheck.rows[0].exists) {
+      console.log("Videos table already exists in schema s142");
+      return;
+    }
+
+    // Create videos table (should not reach here given current permissions)
     await client.query(`
-      CREATE TABLE IF NOT EXISTS s142.videos (
+      CREATE TABLE s142.videos (
         id TEXT PRIMARY KEY,
         userId TEXT,
         originalFileName TEXT,
@@ -44,7 +68,7 @@ const initialiseVideoTable = async () => {
         transcript TEXT
       )
     `);
-    console.log("Videos table initialized in schema n11908157");
+    console.log("Videos table initialized in schema s142");
   } catch (err) {
     console.error("Error initializing videos table:", err);
     throw err;
@@ -75,6 +99,7 @@ const updateVideoStatus = async (id, status, outputFileName) => {
       `UPDATE s142.videos SET status = $1, outputFileName = $2 WHERE id = $3`,
       [status, outputFileName, id]
     );
+    console.log("Updated video status:", { id, status, outputFileName });
   } catch (err) {
     console.error("Error updating video status:", err);
     throw err;
