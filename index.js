@@ -104,49 +104,54 @@ async function bootstrap() {
     if (!videoId) {
       return res.status(400).json({ error: "Video ID is required" });
     }
+
     try {
       const videoMetadata = await getVideo(videoId);
       console.log("VideoId:", videoId);
       console.log("Video metadata from DB:", videoMetadata);
       console.log("req.user:", req.user);
+
       if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
           .status(403)
           .json({ error: "Video not found or unauthorized" });
       }
+
       const storedFileName = videoMetadata.storedfilename;
-      const transcodedkey = `transcoded${storedFileName}`;
+      const transcodedKey = `transcoded-${storedFileName}`;
+
       const response = await s3Client.send(
         new GetObjectCommand({
           Bucket: bucketName,
           Key: storedFileName,
         })
       );
-      const videoStream = response.Body;
-      if (!videoStream) {
-        throw new Error("No video data received from S3");
-      }
+
+      const inputStream = response.Body;
+      if (!inputStream) throw new Error("No video data received from S3");
+
       const outputStream = new PassThrough();
+
       const uploads3 = new Upload({
         client: s3Client,
         params: {
           Bucket: bucketName,
-          Key: transcodedkey,
+          Key: transcodedKey,
           Body: outputStream,
           ContentType: "video/mp4",
         },
       });
 
       await updateVideoStatus(videoId, "transcoding", null);
-      await new Promise((resolve, reject) => {
-        ffmpeg(videoStream)
+
+      const ffmpegPromise = new Promise((resolve, reject) => {
+        ffmpeg(inputStream)
           .outputOptions("-movflags frag_keyframe+empty_moov")
           .videoCodec("libx264")
           .format("mp4")
           .on("start", (cmd) => console.log("FFmpeg started:", cmd))
           .on("error", (err) => {
             console.error("FFmpeg error:", err.message);
-            updateVideoStatus(videoId, "failed", null);
             reject(err);
           })
           .on("end", () => {
@@ -156,43 +161,37 @@ async function bootstrap() {
           .pipe(outputStream, { end: true });
       });
 
-      await uploads3.done();
+      await Promise.all([ffmpegPromise, uploads3.done()]);
 
       const command = new GetObjectCommand({
         Bucket: bucketName,
-        Key: transcodedkey,
+        Key: transcodedKey,
         ResponseContentDisposition:
           'attachment; filename="transcodedvideo.mp4"',
       });
 
-      await updateVideoStatus(videoId, "completed", transcodedkey);
+      const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
+        expiresIn: 3600,
+      });
+
+      await updateVideoStatus(videoId, "completed", transcodedKey);
+
       await s3Client.send(
         new DeleteObjectCommand({
           Bucket: bucketName,
           Key: storedFileName,
         })
       );
-
       console.log("Original file deleted:", storedFileName);
 
-      const downloadpresignedURL = await S3Presigner.getSignedUrl(
-        s3Client,
-        command,
-        {
-          expiresIn: 3600,
-        }
-      );
-      console.log("Transcode download URL:", downloadpresignedURL);
-
-      await updateVideoStatus(videoId, "completed", transcodedkey);
-
-      res.json({ url: downloadpresignedURL });
+      res.json({ url: downloadUrl });
     } catch (err) {
       console.error("Transcode error:", err);
       await updateVideoStatus(videoId, "failed", null);
       res.status(500).json({ error: `Transcoding failed: ${err.message}` });
     }
   });
+
   // this is the login thing that you should do/check/add your aws thing to!!
   app.post("/", async (req, res) => {
     const { username, password } = req.body;
