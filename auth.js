@@ -87,7 +87,7 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
     ClientId: clientId,
   });
 
-  res = await client.send(command);
+  const res = await client.send(command);
   console.log(res);
 
   const IdToken = res.AuthenticationResult.IdToken;

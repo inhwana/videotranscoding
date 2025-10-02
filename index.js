@@ -10,14 +10,14 @@ const { Upload } = require("@aws-sdk/lib-storage");
 const { PassThrough } = require("stream");
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const bucketName = "n10851879-test"; // Test Bucket Name
-s3Client = new S3.S3Client({ region: "ap-southeast-2" });
+const s3Client = new S3.S3Client({ region: "ap-southeast-2" });
 
 //AWS Secrets
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
 const {
   cognitoSignUp,
   cognitoLogin,
-  confirmWithCodem,
+  confirmWithCode,
   verifyToken,
 } = require("./auth.js");
 const { getSecrets } = require("./secrets.js");
@@ -98,7 +98,7 @@ async function bootstrap() {
       return res.status(400).json({ error: "Video ID is required" });
     }
     try {
-      const video = await getVideo(videoId);
+      const videoMetadata = await getVideo(videoId);
       if (!video || video.userId !== req.user.sub) {
         return res
           .status(403)
@@ -112,14 +112,11 @@ async function bootstrap() {
           Key: storedFileName,
         })
       );
-      const videoStream = response.Body;
+      const video = response.Body;
       if (!videoStream) {
         throw new Error("No video data received from S3");
       }
       const outputStream = new PassThrough();
-
-      await updateVideoStatus(videoId, "transcoding", null);
-
       const uploads3 = new Upload({
         client: s3Client,
         params: {
@@ -130,6 +127,7 @@ async function bootstrap() {
         },
       });
 
+      await updateVideoStatus(videoId, "transcoding", null);
       await new Promise((resolve, reject) => {
         ffmpeg(videoStream)
           .outputOptions("-movflags frag_keyframe+empty_moov")
@@ -156,6 +154,16 @@ async function bootstrap() {
         ResponseContentDisposition:
           'attachment; filename="transcodedvideo.mp4"',
       });
+
+      await updateVideoStatus(videoId, "completed", transcodedkey);
+      await s3Client.send(
+        new DeleteObjectCommand({
+          Bucket: bucketName,
+          Key: storedFileName,
+        })
+      );
+      console.log("Original file deleted:", storedFileName);
+
       const downloadpresignedURL = await S3Presigner.getSignedUrl(
         s3Client,
         command,
@@ -166,14 +174,6 @@ async function bootstrap() {
       console.log("Transcode download URL:", downloadpresignedURL);
 
       await updateVideoStatus(videoId, "completed", transcodedkey);
-
-      await s3Client.send(
-        new DeleteObjectCommand({
-          Bucket: bucketName,
-          Key: storedFileName,
-        })
-      );
-      console.log("Original file deleted:", storedFileName);
 
       res.json({ url: downloadpresignedURL });
     } catch (err) {
