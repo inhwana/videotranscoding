@@ -1,10 +1,8 @@
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
 
 const client = new SecretsManager.SecretsManagerClient({
-    region: "ap-southeast-2"
-})
-
-
+  region: "ap-southeast-2",
+});
 
 const {
   SecretsManagerClient,
@@ -16,29 +14,44 @@ let clientSecret;
 let clientId;
 
 let cachedSecrets = null;
-const getSecrets = async () => { 
-    if (cachedSecrets) return cachedSecrets;
+const getSecrets = async () => {
+  if (cachedSecrets) return cachedSecrets;
 
-    try {
-        const secretCommand = new GetSecretValueCommand({ SecretId: "n11908157-secretForClient" })
-        const secretResponse = await client.send(secretCommand)
-         const parsedSecret = JSON.parse(secretResponse.SecretString); // <-- parse JSON
-        clientSecret = parsedSecret.clientSecret; // extract actual string
+  try {
+    const secretCommand = new GetSecretValueCommand({
+      SecretId: "n11908157-secretForClient",
+    });
+    const secretResponse = await client.send(secretCommand);
+    const parsedSecret = JSON.parse(secretResponse.SecretString);
+    clientSecret = parsedSecret.clientSecret;
 
+    const idCommand = new GetSecretValueCommand({
+      SecretId: "n11908157-clientId",
+    });
+    const idResponse = await client.send(idCommand);
+    const parsedId = JSON.parse(idResponse.SecretString);
+    clientId = parsedId.clientId;
 
-        const idCommand = new GetSecretValueCommand({ SecretId: "n11908157-clientId" })
-        const idResponse = await client.send(idCommand)
-        const parsedId = JSON.parse(idResponse.SecretString); // <-- parse JSON
-        clientId = parsedId.clientId; // extract actual string
+    const rdsCommand = new GetSecretValueCommand({
+      SecretId: "n11908157-rds-credentials",
+    });
 
-        return cachedSecrets = {clientSecret, clientId}
-    }
-    catch (err) {
-        console.error(err);
-        process.exit(1)
+    const rdsResponse = await client.send(rdsCommand);
 
-    }
-   
-}
+    const parsedRds = JSON.parse(rdsResponse.SecretString);
+    const rdsUsername = parsedRds.username;
+    const rdsPassword = parsedRds.password;
 
-module.exports = {getSecrets}
+    return (cachedSecrets = {
+      clientSecret,
+      clientId,
+      rdsUsername,
+      rdsPassword,
+    });
+  } catch (err) {
+    console.error(err);
+    process.exit(1);
+  }
+};
+
+module.exports = { getSecrets };

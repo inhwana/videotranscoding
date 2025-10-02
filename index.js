@@ -1,10 +1,8 @@
 const express = require("express");
-const multer = require("multer");
 const ffmpeg = require("fluent-ffmpeg");
 const dotenv = require("dotenv");
-const fs = require("fs");
-const path = require("path");
 
+const { v4: uuidv4 } = require("uuid");
 //AWS S3
 const S3 = require("@aws-sdk/client-s3"); // AWS S3
 const S3Presigner = require("@aws-sdk/s3-request-presigner");
@@ -26,6 +24,14 @@ const { getSecrets } = require("./secrets.js");
 
 const cors = require("cors");
 
+const {
+  initDb,
+  initialiseVideoTable,
+  addVideo,
+  updateVideoStatus,
+  getUsersVideos,
+} = require("./db.js");
+
 async function bootstrap() {
   //Default
   const app = express();
@@ -37,7 +43,7 @@ async function bootstrap() {
   // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
   const { clientId, clientSecret } = await getSecrets();
-
+  await initialiseVideoTable();
   //S3 Upload
   app.post("/upload", verifyToken, async (req, res) => {
     // Return Upload Presigned URL
@@ -53,86 +59,123 @@ async function bootstrap() {
         expiresIn: 3600,
       });
       console.log(presignedURL);
+      // Store metadata in RDS
+      await addVideo({
+        id: videoId,
+        userId: req.user.sub,
+        originalFileName: filename,
+        storedFileName,
+        uploadTimestamp: Date.now(),
+        status: "uploading",
+        requestedFormat,
+      });
       //console.log("Received:", filename, contentType);
-      res.json({ url: presignedURL });
+      res.json({ url: presignedURL, videoId });
     } catch (err) {
       console.log(err);
     }
   });
 
-  // Transcode the video from S3
-  app.post("/transcode", verifyToken, async (req, res) => {
-    const { filename } = req.body;
-    let transcodedkey = `transcoded${filename}`;
-    let response;
-
-    // Create and send a command to read an object, Download the video from S3
+  // Get user's video history
+  app.get("/videos", verifyToken, async (req, res) => {
     try {
-      response = await s3Client.send(
-        new S3.GetObjectCommand({
+      const videos = await getUsersVideos(req.user.sub);
+      res.json(videos);
+    } catch (err) {
+      console.error("Error fetching videos:", err);
+      res.status(500).json({ error: "Failed to fetch videos" });
+    }
+  });
+
+  // Transcode the video from S3
+  app.post("/api/transcode", verifyToken, async (req, res) => {
+    const { videoId } = req.body;
+    if (!videoId) {
+      return res.status(400).json({ error: "Video ID is required" });
+    }
+    try {
+      const video = await getVideo(videoId);
+      if (!video || video.userId !== req.user.sub) {
+        return res
+          .status(403)
+          .json({ error: "Video not found or unauthorized" });
+      }
+      const storedFileName = video.storedFileName;
+      const transcodedkey = `transcoded${storedFileName}`;
+      const response = await s3Client.send(
+        new GetObjectCommand({
           Bucket: bucketName,
-          Key: filename,
+          Key: storedFileName,
         })
       );
-      const video = response.Body;
-      const videostream = new PassThrough();
+      const videoStream = response.Body;
+      if (!videoStream) {
+        throw new Error("No video data received from S3");
+      }
+      const outputStream = new PassThrough();
 
-      //Creating Upload, uploading mp4 video
+      await updateVideoStatus(videoId, "transcoding", null);
+
       const uploads3 = new Upload({
         client: s3Client,
         params: {
           Bucket: bucketName,
           Key: transcodedkey,
-          Body: videostream,
+          Body: outputStream,
           ContentType: "video/mp4",
         },
       });
 
-      // Transcoding Using FFMPEG
-      ffmpeg(video)
-        .outputOptions("-movflags frag_keyframe+empty_moov") // Used because MP4 does not work well with streams
-        .videoCodec("libx264")
-        .format("mp4")
-        .on("start", (cmd) => console.log("FFmpeg started:", cmd))
-        .on("error", (err) => {
-          console.error("Error:", err.message);
-          res.status(500).send("Transcoding Failed :(");
-          return;
-        })
-        .on("end", () => {
-          console.log("Transcoding Complete");
-        })
-        .pipe(videostream, { end: true });
+      await new Promise((resolve, reject) => {
+        ffmpeg(videoStream)
+          .outputOptions("-movflags frag_keyframe+empty_moov")
+          .videoCodec("libx264")
+          .format("mp4")
+          .on("start", (cmd) => console.log("FFmpeg started:", cmd))
+          .on("error", (err) => {
+            console.error("FFmpeg error:", err.message);
+            updateVideoStatus(videoId, "failed", null);
+            reject(err);
+          })
+          .on("end", () => {
+            console.log("Transcoding complete");
+            resolve();
+          })
+          .pipe(outputStream, { end: true });
+      });
 
-      // Start Uploading
       await uploads3.done();
 
-      // Create a pre-signed URL for reading an object
-      const command = new S3.GetObjectCommand({
+      const command = new GetObjectCommand({
         Bucket: bucketName,
         Key: transcodedkey,
         ResponseContentDisposition:
-          'attachment; filename="transcodedvideo.mp4"', // Used for directly downloading from presigned URL
+          'attachment; filename="transcodedvideo.mp4"',
       });
       const downloadpresignedURL = await S3Presigner.getSignedUrl(
         s3Client,
         command,
-        { expiresIn: 3600 }
+        {
+          expiresIn: 3600,
+        }
       );
-      res.json({ url: downloadpresignedURL });
-      console.log(downloadpresignedURL);
+      console.log("Transcode download URL:", downloadpresignedURL);
 
-      // Delete Original Video
-      const data = await s3Client.send(
+      await updateVideoStatus(videoId, "completed", transcodedkey);
+
+      await s3Client.send(
         new DeleteObjectCommand({
           Bucket: bucketName,
-          Key: filename,
+          Key: storedFileName,
         })
       );
-      console.log("Success. Object deleted.", data);
-      // Delete Original Video
+      console.log("Original file deleted:", storedFileName);
+
+      res.json({ url: downloadpresignedURL });
     } catch (err) {
-      console.log(err);
+      console.error("Transcode error:", err);
+      await updateVideoStatus(videoId, "failed", null);
+      res.status(500).json({ error: `Transcoding failed: ${err.message}` });
     }
   });
   // this is the login thing that you should do/check/add your aws thing to!!
