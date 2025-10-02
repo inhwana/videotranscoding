@@ -4,7 +4,12 @@ const dotenv = require("dotenv");
 
 const { v4: uuidv4 } = require("uuid");
 //AWS S3
-const S3 = require("@aws-sdk/client-s3"); // AWS S3
+const {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} = require("@aws-sdk/client-s3");
 const S3Presigner = require("@aws-sdk/s3-request-presigner");
 const { Upload } = require("@aws-sdk/lib-storage");
 const { PassThrough } = require("stream");
