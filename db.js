@@ -28,6 +28,9 @@ const initDb = async () => {
 const initialiseVideoTable = async () => {
   const client = await initDb();
   try {
+    // Create schema if it doesn't exist
+    await client.query(`CREATE SCHEMA IF NOT EXISTS n11908157`);
+    console.log("Schema n11908157 created or already exists");
     await client.query(`
       CREATE TABLE IF NOT EXISTS n11908157.videos (
         id TEXT PRIMARY KEY,
