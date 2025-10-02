@@ -13,7 +13,7 @@ const {
 const S3Presigner = require("@aws-sdk/s3-request-presigner");
 const { Upload } = require("@aws-sdk/lib-storage");
 const { PassThrough } = require("stream");
-const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
+
 const bucketName = "n10851879-test"; // Test Bucket Name
 const s3Client = new S3.S3Client({ region: "ap-southeast-2" });
 
