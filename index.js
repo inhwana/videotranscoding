@@ -71,7 +71,6 @@ async function bootstrap() {
         storedFileName,
         uploadTimestamp: Date.now(),
         status: "uploading",
-        requestedFormat,
       });
       //console.log("Received:", filename, contentType);
       res.json({ url: presignedURL, videoId });
