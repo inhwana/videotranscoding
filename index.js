@@ -101,8 +101,9 @@ async function bootstrap() {
     }
     try {
       const videoMetadata = await getVideo(videoId);
-      console.log("Video metadata:", videoMetadata);
-      console.log("Expected user:", req.user.sub);
+      console.log("VideoId:", videoId);
+      console.log("Video metadata from DB:", videoMetadata);
+      console.log("req.user:", req.user);
       if (!videoMetadata || videoMetadata.userId !== req.user.sub) {
         return res
           .status(403)
