@@ -12,8 +12,15 @@ const initDb = async () => {
       database: "cohort_2025",
       user: rdsUsername,
       password: rdsPassword,
-      ssl: { rejectUnauthorized: false }, // Required for RDS
+      ssl: { rejectUnauthorized: false },
     });
+    try {
+      await pool.connect();
+      console.log("Connected to RDS PostgreSQL");
+    } catch (err) {
+      console.error("RDS connection error:", err);
+      throw err;
+    }
   }
   return pool;
 };
@@ -22,7 +29,7 @@ const initialiseVideoTable = async () => {
   const client = await initDb();
   try {
     await client.query(`
-      CREATE TABLE IF NOT EXISTS videos (
+      CREATE TABLE IF NOT EXISTS n11908157.videos (
         id TEXT PRIMARY KEY,
         userId TEXT,
         originalFileName TEXT,
@@ -34,7 +41,7 @@ const initialiseVideoTable = async () => {
         transcript TEXT
       )
     `);
-    console.log("Videos table initialized");
+    console.log("Videos table initialized in schema n11908157");
   } catch (err) {
     console.error("Error initializing videos table:", err);
     throw err;
@@ -46,7 +53,7 @@ const getUsersVideos = async (userId) => {
   try {
     const res = await client.query(
       `SELECT id, userId, originalFileName, storedFileName, uploadTimestamp, status, outputFileName
-       FROM videos
+       FROM n11908157.videos
        WHERE userId = $1
        ORDER BY uploadTimestamp DESC`,
       [userId]
@@ -62,7 +69,7 @@ const updateVideoStatus = async (id, status, outputFileName) => {
   const client = await initDb();
   try {
     await client.query(
-      `UPDATE videos SET status = $1, outputFileName = $2 WHERE id = $3`,
+      `UPDATE n11908157.videos SET status = $1, outputFileName = $2 WHERE id = $3`,
       [status, outputFileName, id]
     );
   } catch (err) {
@@ -85,7 +92,7 @@ const addVideo = async (metadata) => {
   } = metadata;
   try {
     await client.query(
-      `INSERT INTO videos (id, userId, originalFileName, storedFileName, uploadTimestamp, status, outputFileName, requestedFormat)
+      `INSERT INTO n11908157.videos (id, userId, originalFileName, storedFileName, uploadTimestamp, status, outputFileName, requestedFormat)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         id,
@@ -98,6 +105,7 @@ const addVideo = async (metadata) => {
         requestedFormat,
       ]
     );
+    console.log("Video added to RDS:", { id, userId, storedFileName });
   } catch (err) {
     console.error("Error adding video:", err);
     throw err;
@@ -107,7 +115,10 @@ const addVideo = async (metadata) => {
 const getVideo = async (id) => {
   const client = await initDb();
   try {
-    const res = await client.query(`SELECT * FROM videos WHERE id = $1`, [id]);
+    const res = await client.query(
+      `SELECT * FROM n11908157.videos WHERE id = $1`,
+      [id]
+    );
     return res.rows[0];
   } catch (err) {
     console.error("Error fetching video:", err);
@@ -118,10 +129,10 @@ const getVideo = async (id) => {
 const addTranscript = async (transcript, id) => {
   const client = await initDb();
   try {
-    await client.query(`UPDATE videos SET transcript = $1 WHERE id = $2`, [
-      transcript,
-      id,
-    ]);
+    await client.query(
+      `UPDATE n11908157.videos SET transcript = $1 WHERE id = $2`,
+      [transcript, id]
+    );
   } catch (err) {
     console.error("Error adding transcript:", err);
     throw err;
@@ -132,7 +143,7 @@ const getTranscript = async (id) => {
   const client = await initDb();
   try {
     const res = await client.query(
-      `SELECT transcript FROM videos WHERE id = $1`,
+      `SELECT transcript FROM n11908157.videos WHERE id = $1`,
       [id]
     );
     return res.rows[0];

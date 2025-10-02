@@ -57,7 +57,7 @@ async function bootstrap() {
     try {
       const command = new S3.PutObjectCommand({
         Bucket: bucketName,
-        Key: filename,
+        Key: storedFileName,
         //ContentType: contentType
       });
       const presignedURL = await S3Presigner.getSignedUrl(s3Client, command, {
@@ -162,6 +162,7 @@ async function bootstrap() {
           Key: storedFileName,
         })
       );
+
       console.log("Original file deleted:", storedFileName);
 
       const downloadpresignedURL = await S3Presigner.getSignedUrl(
