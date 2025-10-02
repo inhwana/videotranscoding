@@ -41,7 +41,7 @@ const getSecrets = async () => {
     const parsedRds = JSON.parse(rdsResponse.SecretString);
     const rdsUsername = parsedRds.username;
     const rdsPassword = parsedRds.password;
-    console.log(parsed);
+
     return (cachedSecrets = {
       clientSecret,
       clientId,
