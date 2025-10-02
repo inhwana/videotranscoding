@@ -104,7 +104,7 @@ async function bootstrap() {
       console.log("VideoId:", videoId);
       console.log("Video metadata from DB:", videoMetadata);
       console.log("req.user:", req.user);
-      if (!videoMetadata || videoMetadata.userId !== req.user.sub) {
+      if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
           .status(403)
           .json({ error: "Video not found or unauthorized" });
