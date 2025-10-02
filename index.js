@@ -114,7 +114,7 @@ async function bootstrap() {
           .status(403)
           .json({ error: "Video not found or unauthorized" });
       }
-      const storedFileName = videoMetadata.storedfileName;
+      const storedFileName = videoMetadata.storedfilename;
       const transcodedkey = `transcoded${storedFileName}`;
       const response = await s3Client.send(
         new GetObjectCommand({
