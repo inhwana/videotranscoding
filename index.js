@@ -49,7 +49,6 @@ async function bootstrap() {
   app.use(express.json()); // To get forms from EJS
   dotenv.config(); // Configuratio
 
-  const models = await model.listModels();
   console.log(models);
 
   // const clientId = "dktj13anu4sv0m465jemi791c";
