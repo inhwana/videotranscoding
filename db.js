@@ -28,15 +28,11 @@ const initDb = async () => {
 const initialiseVideoTable = async () => {
   const client = await initDb();
   try {
-    // Check if schema exists
     const schemaCheck = await client.query(
       `SELECT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 's142')`
     );
     if (!schemaCheck.rows[0].exists) {
-      console.error(
-        "Schema s142 does not exist. Contact your instructor to create the schema and grant permissions: " +
-          "CREATE SCHEMA s142; GRANT ALL ON SCHEMA s142 TO s142; GRANT CREATE, USAGE ON DATABASE cohort_2025 TO s142;"
-      );
+      console.error("Schema s142 does not exist");
       throw new Error("Schema s142 does not exist");
     }
 
@@ -50,7 +46,7 @@ const initialiseVideoTable = async () => {
        )`
     );
     if (tableCheck.rows[0].exists) {
-      console.log("Videos table already exists in schema s142");
+      console.log("s142 schema already has a videos table");
       return;
     }
 
@@ -68,7 +64,7 @@ const initialiseVideoTable = async () => {
         transcript TEXT
       )
     `);
-    console.log("Videos table initialized in schema s142");
+    console.log("Videos table created!!");
   } catch (err) {
     console.error("Error initializing videos table:", err);
     throw err;
