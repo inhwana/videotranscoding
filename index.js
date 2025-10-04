@@ -344,6 +344,7 @@ async function bootstrap() {
   const transcriptionClient = new AssemblyAI({
     apiKey: "a62e91c5e6e541529d3f040fa45a753e",
   });
+
   app.post("/transcribe", verifyToken, async (req, res) => {
     const { videoId } = req.body;
 
@@ -353,7 +354,6 @@ async function bootstrap() {
 
     try {
       const videoMetadata = await getVideo(videoId);
-      console.log("Video metadata for transcription:", videoMetadata);
 
       if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
@@ -361,29 +361,22 @@ async function bootstrap() {
           .json({ error: "Video not found or unauthorized" });
       }
 
-      // First, ensure audio is extracted
       const storedFileName = videoMetadata.storedfilename;
       const audioKey = storedFileName.replace(/\.[^/.]+$/, ".mp3");
 
-      console.log("Checking/Extracting audio for transcription...");
-
-      // Use the same audio extraction logic
+      // Check if audio exists
       try {
         await s3Client.send(
           new GetObjectCommand({ Bucket: bucketName, Key: audioKey })
         );
-        console.log("Audio exists, proceeding with transcription");
       } catch (err) {
-        console.log("Audio not found, extracting first...");
-        // Audio doesn't exist, you might want to call your extract-audio logic here
-        // For now, we'll return an error asking user to extract audio first
         return res.status(400).json({
           error:
             "Audio not extracted. Please extract audio first using /extract-audio endpoint",
         });
       }
 
-      // Generate presigned URL for the audio file (AssemblyAI needs a publicly accessible URL)
+      // Generate presigned URL for AssemblyAI
       const command = new GetObjectCommand({
         Bucket: bucketName,
         Key: audioKey,
@@ -393,19 +386,11 @@ async function bootstrap() {
         expiresIn: 3600,
       });
 
-      console.log(
-        "Starting transcription with audio URL:",
-        audioUrl.substring(0, 100) + "..."
-      );
-
       // Transcribe with AssemblyAI
       const transcript = await transcriptionClient.transcripts.transcribe({
         audio: audioUrl,
-        speech_model: "best", // Use "best" for highest accuracy
+        speech_model: "best",
       });
-
-      console.log("Transcription status:", transcript.status);
-      console.log("Transcription text length:", transcript.text?.length || 0);
 
       if (transcript.status === "error") {
         throw new Error(transcript.error || "Transcription failed");
@@ -426,7 +411,6 @@ async function bootstrap() {
         );
         summary = summaryResult.response.text();
       } catch (geminiError) {
-        console.error("Gemini summary error:", geminiError);
         summary = "Summary generation failed";
       }
 
@@ -440,7 +424,6 @@ async function bootstrap() {
       console.error("Transcription error:", err);
       res.status(500).json({
         error: "Transcription failed",
-        details: err.message,
       });
     }
   });
