@@ -431,7 +431,14 @@ async function bootstrap() {
         console.log("✅ Audio extracted and uploaded:", audioKey);
       }
 
-      const audioUrl = `https://${bucketName}.s3.amazonaws.com/${audioKey}`;
+      const command = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: audioKey,
+      });
+
+      const audioUrl = await getSignedUrl(s3Client, command, {
+        expiresIn: 3600,
+      });
 
       console.log("Transcribing:", audioUrl);
       const transcript = await transcriptionClient.transcripts.transcribe({
