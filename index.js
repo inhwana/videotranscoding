@@ -439,7 +439,7 @@ async function bootstrap() {
         speech_model: "universal",
       });
 
-      await addTranscript(transcript.text, jobId);
+      await addTranscript("LSDKJFLSKDJFLSDKJFLSDKFJ", jobId);
 
       const summary = await model.generateContent(
         `Explain the contents of this video from its transcript in a few sentences:\n${transcript.text}`
