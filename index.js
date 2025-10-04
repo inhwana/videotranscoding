@@ -436,7 +436,7 @@ async function bootstrap() {
         Key: audioKey,
       });
 
-      const audioUrl = await getSignedUrl(s3Client, command, {
+      const audioUrl = await S3Presigner.getSignedUrl(s3Client, command, {
         expiresIn: 3600,
       });
 
