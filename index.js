@@ -369,7 +369,7 @@ app.post("/remove-audio", verifyToken, async (req, res) => {
 });
 
 const transcriptionClient = new AssemblyAI({
-  apiKey: a62e91c5e6e541529d3f040fa45a753e,
+  apiKey: "a62e91c5e6e541529d3f040fa45a753e",
 });
 
 app.post("/transcribe/:jobId", verifyToken, async (req, res) => {
