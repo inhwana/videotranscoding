@@ -42,8 +42,6 @@ const {
   addTranscript,
 } = require("./db.js");
 
-const fs = require("fs").promises;
-
 async function bootstrap() {
   //Default
   const app = express();
@@ -60,7 +58,6 @@ async function bootstrap() {
     await getSecrets();
   console.log(rdsUsername, rdsPassword, clientId, clientSecret);
   await initialiseVideoTable();
-
   //S3 Upload
   app.post("/upload", verifyToken, async (req, res) => {
     const { filename } = req.body;
@@ -106,16 +103,6 @@ async function bootstrap() {
     }
   });
 
-  async function s3ObjectExists(bucket, key) {
-    try {
-      await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-      return true;
-    } catch (err) {
-      if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404)
-        return false;
-      throw err;
-    }
-  }
   // Transcode the video from S3
   app.post("/transcode", verifyToken, async (req, res) => {
     const { videoId } = req.body;
@@ -137,14 +124,6 @@ async function bootstrap() {
 
       const storedFileName = videoMetadata.storedfilename;
       const transcodedKey = `transcoded-${storedFileName}`;
-      if (await s3ObjectExists(bucketName, transcodedKey)) {
-        console.log(
-          `⚠️ ${transcodedKey} already exists, deleting before transcoding...`
-        );
-        await s3Client.send(
-          new DeleteObjectCommand({ Bucket: bucketName, Key: transcodedKey })
-        );
-      }
 
       const response = await s3Client.send(
         new GetObjectCommand({
@@ -389,7 +368,6 @@ async function bootstrap() {
     } catch (err) {
       console.error("/remove-audio error:", err);
       res.status(500).json({ error: err.message || "Audio extraction failed" });
-      console.log(err);
     }
   });
 
