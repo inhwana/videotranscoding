@@ -39,6 +39,7 @@ const {
   updateVideoStatus,
   getUsersVideos,
   getVideo,
+  addTranscript,
 } = require("./db.js");
 
 async function bootstrap() {
