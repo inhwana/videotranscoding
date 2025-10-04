@@ -257,198 +257,200 @@ async function bootstrap() {
   app.listen(3000, () => {
     console.log("Server running on port 3000");
   });
-}
 
-const checkIfAudioInS3 = async (videoId, userSub) => {
-  const videoMetadata = await getVideo(videoId);
+  const checkIfAudioInS3 = async (videoId, userSub) => {
+    const videoMetadata = await getVideo(videoId);
 
-  if (!videoMetadata || videoMetadata.userid !== userSub) {
-    throw new Error("Video not found or unauthorised");
-  }
-
-  const storedFileName = videoMetadata.storedfilename;
-
-  const audioKey = `audio/${storedFileName.replace(/\.[^/.]+$/, ".mp3")}`;
-
-  try {
-    await s3Client.send(
-      new GetObjectCommand({
-        Bucket: bucketName,
-        Key: audioKey,
-      })
-    );
-
-    return audioKey;
-  } catch (err) {
-    const code = err && (err.Code || err.name || err.code);
-    if (
-      code !== "NotFound" &&
-      code !== "NoSuchKey" &&
-      !(err.$metadata && err.$metadata.httpStatusCode === 404)
-    ) {
-      throw err;
+    if (!videoMetadata || videoMetadata.userid !== userSub) {
+      throw new Error("Video not found or unauthorised");
     }
-  }
 
-  const videoResponse = await s3Client.send(
-    new GetObjectCommand({
-      Bucket: bucketName,
-      Key: storedFileName,
-    })
-  );
-  const inputStream = videoResponse.Body;
-  if (!inputStream) throw new Error("No video data received from S3");
+    const storedFileName = videoMetadata.storedfilename;
 
-  const outputStream = new PassThrough();
-  const upload = new Upload({
-    client: s3Client,
-    params: {
-      Bucket: bucketName,
-      Key: audioKey,
-      Body: outputStream,
-      ContentType: "audio/mpeg",
-    },
-  });
+    const audioKey = `audio/${storedFileName.replace(/\.[^/.]+$/, ".mp3")}`;
 
-  const ffmpegPromise = new Promise((resolve, reject) => {
-    ffmpeg(inputStream)
-      .noVideo()
-      .audioCodec("libmp3lame")
-      .audioBitrate("192k")
-      .format("mp3")
-      .on("start", (cmd) => console.log("ffmpeg started:", cmd))
-      .on("error", (err) => {
-        console.error("ffmpeg error extracting audio:", err);
-        reject(err);
-      })
-      .on("end", () => {
-        console.log("ffmpeg finished extracting audio:", audioKey);
-        resolve();
-      })
-      .pipe(outputStream, { end: true });
-  });
-
-  await Promise.all([ffmpegPromise, upload.done()]);
-
-  try {
-    await updateVideoStatus(videoId, "audio_ready", audioKey);
-  } catch (e) {
-    console.warn("updateVideoStatus(audio_ready) failed:", e.message || e);
-  }
-
-  return audioKey;
-};
-
-app.post("/remove-audio", verifyToken, async (req, res) => {
-  const { videoId } = req.body;
-  if (!videoId) return res.status(400).json({ error: "videoId required" });
-
-  try {
-    const audioKey = await checkIfAudioInS3(videoId, req.user.sub);
-
-    const command = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: audioKey,
-      ResponseContentDisposition: `attachment; filename="${audioKey
-        .split("/")
-        .pop()}"`,
-    });
-    const presigned = await S3Presigner.getSignedUrl(s3Client, command, {
-      expiresIn: 3600,
-    });
-
-    res.json({
-      message: "Audio extracted and uploaded",
-      audioKey,
-      url: presigned,
-    });
-  } catch (err) {
-    console.error("/remove-audio error:", err);
-    res.status(500).json({ error: err.message || "Audio extraction failed" });
-  }
-});
-
-const transcriptionClient = new AssemblyAI({
-  apiKey: "a62e91c5e6e541529d3f040fa45a753e",
-});
-
-app.post("/transcribe/:jobId", verifyToken, async (req, res) => {
-  try {
-    const { jobId } = req.params;
-    const userSub = req.user.sub;
-
-    const video = await getVideo(jobId);
-    if (!video || video.userid !== userSub)
-      return res.status(404).json({ error: "Video not found or unauthorized" });
-
-    const videoKey = video.storedfilename;
-    const audioKey = videoKey.replace(/\.[^/.]+$/, ".mp3");
-
-    let audioExists = true;
     try {
       await s3Client.send(
-        new GetObjectCommand({ Bucket: bucketName, Key: audioKey })
-      );
-    } catch (err) {
-      audioExists = false;
-    }
-
-    if (!audioExists) {
-      console.log("Extracting audio...");
-      const videoResponse = await s3Client.send(
-        new GetObjectCommand({ Bucket: bucketName, Key: videoKey })
-      );
-      const inputStream = videoResponse.Body;
-      if (!inputStream) throw new Error("No video data received from S3");
-
-      const outputStream = new PassThrough();
-      const upload = new Upload({
-        client: s3Client,
-        params: {
+        new GetObjectCommand({
           Bucket: bucketName,
           Key: audioKey,
-          Body: outputStream,
-          ContentType: "audio/mpeg",
-        },
-      });
+        })
+      );
 
-      const ffmpegPromise = new Promise((resolve, reject) => {
-        ffmpeg(inputStream)
-          .noVideo()
-          .audioCodec("libmp3lame")
-          .audioBitrate("192k")
-          .format("mp3")
-          .on("end", resolve)
-          .on("error", reject)
-          .pipe(outputStream, { end: true });
-      });
-
-      await Promise.all([ffmpegPromise, upload.done()]);
-      console.log("✅ Audio extracted and uploaded:", audioKey);
+      return audioKey;
+    } catch (err) {
+      const code = err && (err.Code || err.name || err.code);
+      if (
+        code !== "NotFound" &&
+        code !== "NoSuchKey" &&
+        !(err.$metadata && err.$metadata.httpStatusCode === 404)
+      ) {
+        throw err;
+      }
     }
 
-    const audioUrl = `https://${bucketName}.s3.amazonaws.com/${audioKey}`;
-
-    console.log("Transcribing:", audioUrl);
-    const transcript = await transcriptionClient.transcripts.transcribe({
-      audio: audioUrl,
-      speech_model: "universal",
-    });
-
-    await addTranscript(transcript.text, jobId);
-
-    const summary = await model.generateContent(
-      `Explain the contents of this video from its transcript in a few sentences:\n${transcript.text}`
+    const videoResponse = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: bucketName,
+        Key: storedFileName,
+      })
     );
+    const inputStream = videoResponse.Body;
+    if (!inputStream) throw new Error("No video data received from S3");
 
-    res.json({
-      transcript: transcript.text,
-      summary: summary.response.text(),
+    const outputStream = new PassThrough();
+    const upload = new Upload({
+      client: s3Client,
+      params: {
+        Bucket: bucketName,
+        Key: audioKey,
+        Body: outputStream,
+        ContentType: "audio/mpeg",
+      },
     });
-  } catch (err) {
-    console.error("Transcription error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
+
+    const ffmpegPromise = new Promise((resolve, reject) => {
+      ffmpeg(inputStream)
+        .noVideo()
+        .audioCodec("libmp3lame")
+        .audioBitrate("192k")
+        .format("mp3")
+        .on("start", (cmd) => console.log("ffmpeg started:", cmd))
+        .on("error", (err) => {
+          console.error("ffmpeg error extracting audio:", err);
+          reject(err);
+        })
+        .on("end", () => {
+          console.log("ffmpeg finished extracting audio:", audioKey);
+          resolve();
+        })
+        .pipe(outputStream, { end: true });
+    });
+
+    await Promise.all([ffmpegPromise, upload.done()]);
+
+    try {
+      await updateVideoStatus(videoId, "audio_ready", audioKey);
+    } catch (e) {
+      console.warn("updateVideoStatus(audio_ready) failed:", e.message || e);
+    }
+
+    return audioKey;
+  };
+
+  app.post("/remove-audio", verifyToken, async (req, res) => {
+    const { videoId } = req.body;
+    if (!videoId) return res.status(400).json({ error: "videoId required" });
+
+    try {
+      const audioKey = await checkIfAudioInS3(videoId, req.user.sub);
+
+      const command = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: audioKey,
+        ResponseContentDisposition: `attachment; filename="${audioKey
+          .split("/")
+          .pop()}"`,
+      });
+      const presigned = await S3Presigner.getSignedUrl(s3Client, command, {
+        expiresIn: 3600,
+      });
+
+      res.json({
+        message: "Audio extracted and uploaded",
+        audioKey,
+        url: presigned,
+      });
+    } catch (err) {
+      console.error("/remove-audio error:", err);
+      res.status(500).json({ error: err.message || "Audio extraction failed" });
+    }
+  });
+
+  const transcriptionClient = new AssemblyAI({
+    apiKey: "a62e91c5e6e541529d3f040fa45a753e",
+  });
+
+  app.post("/transcribe/:jobId", verifyToken, async (req, res) => {
+    try {
+      const { jobId } = req.params;
+      const userSub = req.user.sub;
+
+      const video = await getVideo(jobId);
+      if (!video || video.userid !== userSub)
+        return res
+          .status(404)
+          .json({ error: "Video not found or unauthorized" });
+
+      const videoKey = video.storedfilename;
+      const audioKey = videoKey.replace(/\.[^/.]+$/, ".mp3");
+
+      let audioExists = true;
+      try {
+        await s3Client.send(
+          new GetObjectCommand({ Bucket: bucketName, Key: audioKey })
+        );
+      } catch (err) {
+        audioExists = false;
+      }
+
+      if (!audioExists) {
+        console.log("Extracting audio...");
+        const videoResponse = await s3Client.send(
+          new GetObjectCommand({ Bucket: bucketName, Key: videoKey })
+        );
+        const inputStream = videoResponse.Body;
+        if (!inputStream) throw new Error("No video data received from S3");
+
+        const outputStream = new PassThrough();
+        const upload = new Upload({
+          client: s3Client,
+          params: {
+            Bucket: bucketName,
+            Key: audioKey,
+            Body: outputStream,
+            ContentType: "audio/mpeg",
+          },
+        });
+
+        const ffmpegPromise = new Promise((resolve, reject) => {
+          ffmpeg(inputStream)
+            .noVideo()
+            .audioCodec("libmp3lame")
+            .audioBitrate("192k")
+            .format("mp3")
+            .on("end", resolve)
+            .on("error", reject)
+            .pipe(outputStream, { end: true });
+        });
+
+        await Promise.all([ffmpegPromise, upload.done()]);
+        console.log("✅ Audio extracted and uploaded:", audioKey);
+      }
+
+      const audioUrl = `https://${bucketName}.s3.amazonaws.com/${audioKey}`;
+
+      console.log("Transcribing:", audioUrl);
+      const transcript = await transcriptionClient.transcripts.transcribe({
+        audio: audioUrl,
+        speech_model: "universal",
+      });
+
+      await addTranscript(transcript.text, jobId);
+
+      const summary = await model.generateContent(
+        `Explain the contents of this video from its transcript in a few sentences:\n${transcript.text}`
+      );
+
+      res.json({
+        transcript: transcript.text,
+        summary: summary.response.text(),
+      });
+    } catch (err) {
+      console.error("Transcription error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+}
 
 bootstrap();
