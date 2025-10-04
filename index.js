@@ -438,8 +438,8 @@ async function bootstrap() {
         audio: audioUrl,
         speech_model: "universal",
       });
-
-      await addTranscript("LSDKJFLSKDJFLSDKJFLSDKFJ", jobId);
+      console.log(transcript);
+      await addTranscript(transcript.text, jobId);
 
       const summary = await model.generateContent(
         `Explain the contents of this video from its transcript in a few sentences:\n${transcript.text}`
