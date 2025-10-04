@@ -371,6 +371,7 @@ async function bootstrap() {
     } catch (err) {
       console.error("/remove-audio error:", err);
       res.status(500).json({ error: err.message || "Audio extraction failed" });
+      console.log(err);
     }
   });
 
