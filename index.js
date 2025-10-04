@@ -341,96 +341,49 @@ async function bootstrap() {
     return audioKey;
   };
 
-  app.post("/remove-audio", verifyToken, async (req, res) => {
-    const { videoId } = req.body;
-    if (!videoId) return res.status(400).json({ error: "videoId required" });
-
-    try {
-      const audioKey = await checkIfAudioInS3(videoId, req.user.sub);
-
-      const command = new GetObjectCommand({
-        Bucket: bucketName,
-        Key: audioKey,
-        ResponseContentDisposition: `attachment; filename="${audioKey
-          .split("/")
-          .pop()}"`,
-      });
-      const presigned = await S3Presigner.getSignedUrl(s3Client, command, {
-        expiresIn: 3600,
-      });
-
-      res.json({
-        message: "Audio extracted and uploaded",
-        audioKey,
-        url: presigned,
-      });
-    } catch (err) {
-      console.error("/remove-audio error:", err);
-      res.status(500).json({ error: err.message || "Audio extraction failed" });
-    }
-  });
-
   const transcriptionClient = new AssemblyAI({
     apiKey: "a62e91c5e6e541529d3f040fa45a753e",
   });
+  app.post("/transcribe", verifyToken, async (req, res) => {
+    const { videoId } = req.body;
 
-  app.post("/transcribe/:jobId", verifyToken, async (req, res) => {
+    if (!videoId) {
+      return res.status(400).json({ error: "Video ID is required" });
+    }
+
     try {
-      const { jobId } = req.params;
-      const userSub = req.user.sub;
+      const videoMetadata = await getVideo(videoId);
+      console.log("Video metadata for transcription:", videoMetadata);
 
-      const video = await getVideo(jobId);
-      if (!video || video.userid !== userSub)
+      if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
-          .status(404)
+          .status(403)
           .json({ error: "Video not found or unauthorized" });
-      console.log(video);
-      const videoKey = video.storedfilename;
-      const audioKey = videoKey.replace(/\.[^/.]+$/, ".mp3");
+      }
 
-      let audioExists = true;
+      // First, ensure audio is extracted
+      const storedFileName = videoMetadata.storedfilename;
+      const audioKey = storedFileName.replace(/\.[^/.]+$/, ".mp3");
+
+      console.log("Checking/Extracting audio for transcription...");
+
+      // Use the same audio extraction logic
       try {
         await s3Client.send(
           new GetObjectCommand({ Bucket: bucketName, Key: audioKey })
         );
+        console.log("Audio exists, proceeding with transcription");
       } catch (err) {
-        audioExists = false;
+        console.log("Audio not found, extracting first...");
+        // Audio doesn't exist, you might want to call your extract-audio logic here
+        // For now, we'll return an error asking user to extract audio first
+        return res.status(400).json({
+          error:
+            "Audio not extracted. Please extract audio first using /extract-audio endpoint",
+        });
       }
 
-      if (!audioExists) {
-        console.log("Extracting audio...");
-        const videoResponse = await s3Client.send(
-          new GetObjectCommand({ Bucket: bucketName, Key: videoKey })
-        );
-        const inputStream = videoResponse.Body;
-        if (!inputStream) throw new Error("No video data received from S3");
-
-        const outputStream = new PassThrough();
-        const upload = new Upload({
-          client: s3Client,
-          params: {
-            Bucket: bucketName,
-            Key: audioKey,
-            Body: outputStream,
-            ContentType: "audio/mpeg",
-          },
-        });
-
-        const ffmpegPromise = new Promise((resolve, reject) => {
-          ffmpeg(inputStream)
-            .noVideo()
-            .audioCodec("libmp3lame")
-            .audioBitrate("192k")
-            .format("mp3")
-            .on("end", resolve)
-            .on("error", reject)
-            .pipe(outputStream, { end: true });
-        });
-
-        await Promise.all([ffmpegPromise, upload.done()]);
-        console.log("✅ Audio extracted and uploaded:", audioKey);
-      }
-
+      // Generate presigned URL for the audio file (AssemblyAI needs a publicly accessible URL)
       const command = new GetObjectCommand({
         Bucket: bucketName,
         Key: audioKey,
@@ -440,61 +393,98 @@ async function bootstrap() {
         expiresIn: 3600,
       });
 
-      console.log("Transcribing:", audioUrl);
-      const transcript = await transcriptionClient.transcripts.transcribe({
-        audio: audioUrl,
-        speech_model: "universal",
-      });
-      console.log(transcript);
-      await addTranscript(transcript.text, jobId);
-
-      const summary = await model.generateContent(
-        `Explain the contents of this video from its transcript in a few sentences:\n${transcript.text}`
+      console.log(
+        "Starting transcription with audio URL:",
+        audioUrl.substring(0, 100) + "..."
       );
 
+      // Transcribe with AssemblyAI
+      const transcript = await transcriptionClient.transcripts.transcribe({
+        audio: audioUrl,
+        speech_model: "best", // Use "best" for highest accuracy
+      });
+
+      console.log("Transcription status:", transcript.status);
+      console.log("Transcription text length:", transcript.text?.length || 0);
+
+      if (transcript.status === "error") {
+        throw new Error(transcript.error || "Transcription failed");
+      }
+
+      if (!transcript.text) {
+        throw new Error("No transcription text received");
+      }
+
+      // Save transcript to database
+      await addTranscript(transcript.text, videoId);
+
+      // Generate summary using Gemini
+      let summary = "No summary available";
+      try {
+        const summaryResult = await model.generateContent(
+          `Provide a concise summary (2-3 sentences) of this video transcript:\n\n${transcript.text}`
+        );
+        summary = summaryResult.response.text();
+      } catch (geminiError) {
+        console.error("Gemini summary error:", geminiError);
+        summary = "Summary generation failed";
+      }
+
       res.json({
+        success: true,
         transcript: transcript.text,
-        summary: summary.response.text(),
+        summary: summary,
+        transcriptId: transcript.id,
       });
     } catch (err) {
       console.error("Transcription error:", err);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({
+        error: "Transcription failed",
+        details: err.message,
+      });
     }
   });
 
-  app.post("/api/extract-audio/:videoId", verifyToken, async (req, res) => {
-    const { videoId } = req.params;
-    if (!videoId) return res.status(400).json({ error: "Video ID required" });
+  app.post("/extract-audio", verifyToken, async (req, res) => {
+    const { videoId } = req.body;
+    if (!videoId) {
+      return res.status(400).json({ error: "Video ID is required" });
+    }
+
     try {
-      const video = await getVideo(videoId);
-      if (!video || video.userid !== req.user.sub) {
+      const videoMetadata = await getVideo(videoId);
+      console.log("Video metadata:", videoMetadata);
+
+      if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
           .status(403)
           .json({ error: "Video not found or unauthorized" });
       }
-      const storedFileName = video.storedfilename;
+
+      const storedFileName = videoMetadata.storedfilename;
       const audioKey = storedFileName.replace(/\.[^/.]+$/, ".mp3");
-      let audioExists = true;
+
+      console.log("Checking if audio already exists:", audioKey);
+
+      // Check if audio already exists
       try {
         await s3Client.send(
           new GetObjectCommand({ Bucket: bucketName, Key: audioKey })
         );
-        console.log("Audio already exists:", audioKey);
+        console.log("Audio already exists in S3");
       } catch (err) {
-        if (err.name === "NoSuchKey") {
-          audioExists = false;
-        } else {
-          console.error("S3 check error:", err);
-          throw err;
-        }
-      }
-      if (!audioExists) {
-        const response = await s3Client.send(
+        // Audio doesn't exist, extract it
+        console.log("Audio not found, extracting from video...");
+
+        const videoResponse = await s3Client.send(
           new GetObjectCommand({ Bucket: bucketName, Key: storedFileName })
         );
-        const inputStream = response.Body;
+
+        const inputStream = videoResponse.Body;
         if (!inputStream) throw new Error("No video data received from S3");
+
         const outputStream = new PassThrough();
+
         const upload = new Upload({
           client: s3Client,
           params: {
@@ -504,40 +494,61 @@ async function bootstrap() {
             ContentType: "audio/mpeg",
           },
         });
+
         await new Promise((resolve, reject) => {
           ffmpeg(inputStream)
             .noVideo()
             .audioCodec("libmp3lame")
             .audioBitrate("192k")
             .format("mp3")
-            .on("start", (cmd) => console.log("FFmpeg started:", cmd))
+            .on("start", (cmd) =>
+              console.log("FFmpeg audio extraction started:", cmd)
+            )
+            .on("progress", (progress) => {
+              console.log(`Audio extraction progress: ${progress.percent}%`);
+            })
             .on("error", (err) => {
-              console.error("FFmpeg error:", err.message, err.stack);
+              console.error("FFmpeg audio extraction error:", err);
               reject(err);
             })
             .on("end", () => {
-              console.log("Audio extracted:", audioKey);
+              console.log("Audio extraction completed");
               resolve();
             })
             .pipe(outputStream, { end: true });
         });
+
         await upload.done();
-        console.log("✅ Audio extracted and uploaded:", audioKey);
-        await updateVideoStatus(videoId, "audio_ready", audioKey);
+        console.log("Audio uploaded to S3:", audioKey);
       }
+
+      // Generate presigned URL for the audio file
       const command = new GetObjectCommand({
         Bucket: bucketName,
         Key: audioKey,
         ResponseContentDisposition:
           'attachment; filename="extracted-audio.mp3"',
       });
+
       const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
         expiresIn: 3600,
       });
-      res.json({ url: downloadUrl });
+
+      // Update video status
+      await updateVideoStatus(videoId, "audio_ready", audioKey);
+
+      res.json({
+        success: true,
+        message: "Audio extracted successfully",
+        audioKey: audioKey,
+        downloadUrl: downloadUrl,
+      });
     } catch (err) {
-      console.error("Audio extraction error:", err.message, err.stack);
-      res.status(500).json({ error: err.message || "Audio extraction failed" });
+      console.error("Audio extraction error:", err);
+      res.status(500).json({
+        error: "Audio extraction failed",
+        details: err.message,
+      });
     }
   });
 }
