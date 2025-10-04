@@ -178,12 +178,12 @@ async function bootstrap() {
 
       await updateVideoStatus(videoId, "completed", transcodedKey);
 
-      await s3Client.send(
-        new DeleteObjectCommand({
-          Bucket: bucketName,
-          Key: storedFileName,
-        })
-      );
+      // await s3Client.send(
+      //   new DeleteObjectCommand({
+      //     Bucket: bucketName,
+      //     Key: storedFileName,
+      //   })
+      // );
       console.log("Original file deleted:", storedFileName);
 
       res.json({ url: downloadUrl });
@@ -267,7 +267,7 @@ async function bootstrap() {
 
     const storedFileName = videoMetadata.storedfilename;
 
-    const audioKey = `audio/${storedFileName.replace(/\.[^/.]+$/, ".mp3")}`;
+    const audioKey = `${storedFileName.replace(/\.[^/.]+$/, ".mp3")}`;
 
     try {
       await s3Client.send(
