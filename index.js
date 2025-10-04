@@ -49,6 +49,8 @@ async function bootstrap() {
   app.use(express.json()); // To get forms from EJS
   dotenv.config(); // Configuratio
 
+  const data = await getVideo("e3b7def5-c33a-4c3c-a939-3a5efc71b10d");
+  console.log(data);
   // const clientId = "dktj13anu4sv0m465jemi791c";
   // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
