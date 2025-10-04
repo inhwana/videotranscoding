@@ -151,7 +151,6 @@ async function bootstrap() {
 
       const ffmpegPromise = new Promise((resolve, reject) => {
         ffmpeg(inputStream)
-          .inputFormat("mp4") // Explicitly set for MP4 streams
           .outputOptions("-movflags frag_keyframe+empty_moov")
           .videoCodec("libx264")
           .format("mp4")
