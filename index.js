@@ -381,7 +381,7 @@ async function bootstrap() {
         return res
           .status(404)
           .json({ error: "Video not found or unauthorized" });
-
+      console.log(video);
       const videoKey = video.storedFileName;
       const audioKey = videoKey.replace(/\.[^/.]+$/, ".mp3");
 
