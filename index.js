@@ -1,7 +1,7 @@
 const express = require("express");
 const ffmpeg = require("fluent-ffmpeg");
 const dotenv = require("dotenv");
-const { genAI } = require("@google/generative-ai");
+const { listModels } = require("@google/generative-ai");
 const { v4: uuidv4 } = require("uuid");
 //AWS S3
 const {
@@ -49,7 +49,7 @@ async function bootstrap() {
   app.use(express.json()); // To get forms from EJS
   dotenv.config(); // Configuratio
 
-  const models = await genAI.ListModels();
+  const models = await genAI.listModels();
   console.log(models);
 
   // const clientId = "dktj13anu4sv0m465jemi791c";
