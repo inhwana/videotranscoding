@@ -60,73 +60,25 @@ async function bootstrap() {
     await getSecrets();
   console.log(rdsUsername, rdsPassword, clientId, clientSecret);
   await initialiseVideoTable();
-  // S3 Upload with Audio Extraction
+
+  //S3 Upload
   app.post("/upload", verifyToken, async (req, res) => {
     const { filename } = req.body;
-    if (!req.files || !req.files.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
-    const file = req.files.file;
+
     const videoId = uuidv4();
     const storedFileName = `${videoId}-${Date.now()}.${filename
       .split(".")
       .pop()}`;
-    const audioKey = `${videoId}-${Date.now()}.mp3`;
     try {
-      // Save uploaded file temporarily
-      const tempVideoPath = `/tmp/${videoId}.mp4`;
-      await fs.writeFile(tempVideoPath, file.data);
-      console.log("Temporary video file saved:", tempVideoPath);
-
-      // Extract audio
-      const tempAudioPath = `/tmp/${videoId}.mp3`;
-      await new Promise((resolve, reject) => {
-        ffmpeg(tempVideoPath)
-          .noVideo()
-          .audioCodec("libmp3lame")
-          .audioBitrate("192k")
-          .on("start", (cmd) => console.log("FFmpeg started:", cmd))
-          .on("error", (err) => {
-            console.error("FFmpeg error:", err.message, err.stack);
-            reject(err);
-          })
-          .on("end", () => {
-            console.log("Audio extracted to:", tempAudioPath);
-            resolve();
-          })
-          .save(tempAudioPath);
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: storedFileName,
+        //ContentType: contentType
       });
-
-      // Upload video to S3
-      const videoUpload = new Upload({
-        client: s3Client,
-        params: {
-          Bucket: bucketName,
-          Key: storedFileName,
-          Body: fs.createReadStream(tempVideoPath),
-          ContentType: file.mimetype,
-        },
+      const presignedURL = await S3Presigner.getSignedUrl(s3Client, command, {
+        expiresIn: 3600,
       });
-      await videoUpload.done();
-      console.log("Video uploaded to S3:", storedFileName);
-
-      // Upload audio to S3
-      const audioUpload = new Upload({
-        client: s3Client,
-        params: {
-          Bucket: bucketName,
-          Key: audioKey,
-          Body: fs.createReadStream(tempAudioPath),
-          ContentType: "audio/mpeg",
-        },
-      });
-      await audioUpload.done();
-      console.log("Audio uploaded to S3:", audioKey);
-
-      // Clean up temporary files
-      await fs.unlink(tempVideoPath);
-      await fs.unlink(tempAudioPath);
-
+      console.log(presignedURL);
       // Store metadata in RDS
       await addVideo({
         id: videoId,
@@ -134,53 +86,12 @@ async function bootstrap() {
         originalFileName: filename,
         storedFileName,
         uploadTimestamp: Date.now(),
-        status: "uploaded",
-        outputFileName: null,
-        audioKey, // Store audio key in DB
+        status: "uploading",
       });
-
-      // Transcribe audio
-      const audioUrl = await S3Presigner.getSignedUrl(
-        s3Client,
-        new GetObjectCommand({ Bucket: bucketName, Key: audioKey }),
-        { expiresIn: 3600 }
-      );
-      console.log("Transcribing with URL:", audioUrl);
-      const transcriptionClient = new AssemblyAI({
-        apiKey: "a62e91c5e6e541529d3f040fa45a753e",
-      });
-      const transcript = await transcriptionClient.transcripts.transcribe({
-        audio: audioUrl,
-        speech_model: "universal",
-      });
-      await addTranscript(transcript.text, videoId);
-      const summary = await model.generateContent(
-        `Explain the contents of this video from its transcript in a few sentences:\n${transcript.text}`
-      );
-
-      // Return presigned URL for video
-      const videoCommand = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: storedFileName,
-      });
-      const presignedURL = await S3Presigner.getSignedUrl(
-        s3Client,
-        videoCommand,
-        {
-          expiresIn: 3600,
-        }
-      );
-      res.json({
-        url: presignedURL,
-        videoId,
-        transcript: transcript.text,
-        summary: summary.response.text(),
-      });
+      //console.log("Received:", filename, contentType);
+      res.json({ url: presignedURL, videoId });
     } catch (err) {
-      console.error("Upload error:", err.message, err.stack);
-      await fs.unlink(tempVideoPath).catch(() => {});
-      await fs.unlink(tempAudioPath).catch(() => {});
-      res.status(500).json({ error: err.message || "Upload failed" });
+      console.log(err);
     }
   });
 
