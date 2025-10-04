@@ -119,7 +119,7 @@ async function bootstrap() {
           .json({ error: "Video not found or unauthorized" });
       }
 
-      const storedFileName = videoMetadata.storedfilename;
+      const storedFileName = videoMetadata.storedFileName;
       const transcodedKey = `transcoded-${storedFileName}`;
 
       const response = await s3Client.send(
@@ -261,11 +261,11 @@ async function bootstrap() {
   const checkIfAudioInS3 = async (videoId, userSub) => {
     const videoMetadata = await getVideo(videoId);
 
-    if (!videoMetadata || videoMetadata.userid !== userSub) {
+    if (!videoMetadata || videoMetadata.userId !== userSub) {
       throw new Error("Video not found or unauthorised");
     }
 
-    const storedFileName = videoMetadata.storedfilename;
+    const storedFileName = videoMetadata.storedFileName;
 
     const audioKey = `audio/${storedFileName.replace(/\.[^/.]+$/, ".mp3")}`;
 
@@ -382,7 +382,7 @@ async function bootstrap() {
           .status(404)
           .json({ error: "Video not found or unauthorized" });
 
-      const videoKey = video.storedfilename;
+      const videoKey = video.storedFileName;
       const audioKey = videoKey.replace(/\.[^/.]+$/, ".mp3");
 
       let audioExists = true;
