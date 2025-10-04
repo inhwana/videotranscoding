@@ -106,6 +106,16 @@ async function bootstrap() {
     }
   });
 
+  async function s3ObjectExists(bucket, key) {
+    try {
+      await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      return true;
+    } catch (err) {
+      if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404)
+        return false;
+      throw err;
+    }
+  }
   // Transcode the video from S3
   app.post("/transcode", verifyToken, async (req, res) => {
     const { videoId } = req.body;
@@ -127,6 +137,14 @@ async function bootstrap() {
 
       const storedFileName = videoMetadata.storedfilename;
       const transcodedKey = `transcoded-${storedFileName}`;
+      if (await s3ObjectExists(bucketName, transcodedKey)) {
+        console.log(
+          `⚠️ ${transcodedKey} already exists, deleting before transcoding...`
+        );
+        await s3Client.send(
+          new DeleteObjectCommand({ Bucket: bucketName, Key: transcodedKey })
+        );
+      }
 
       const response = await s3Client.send(
         new GetObjectCommand({
