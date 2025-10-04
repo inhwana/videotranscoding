@@ -1,7 +1,7 @@
 const express = require("express");
 const ffmpeg = require("fluent-ffmpeg");
 const dotenv = require("dotenv");
-
+const { genAI } = require("@google/generative-ai");
 const { v4: uuidv4 } = require("uuid");
 //AWS S3
 const {
