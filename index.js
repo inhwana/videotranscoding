@@ -17,7 +17,7 @@ const { PassThrough } = require("stream");
 const bucketName = "n10851879-test"; // Test Bucket Name
 const s3Client = new S3Client({ region: "ap-southeast-2" });
 
-const AssemblyAI = require("assemblyai");
+const { AssemblyAI } = require("assemblyai");
 const { model } = require("./gemini.js");
 
 //AWS Secrets
