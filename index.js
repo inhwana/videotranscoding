@@ -229,7 +229,7 @@ app.post("/", async (req, res) => {
       username,
       password
     );
-    if (result.ChallengeName === "EMAIL_MFA") {
+    if (result.ChallengeName === "EMAIL_OTP") {
       res.json({
         ChallengeName: result.ChallengeName,
         Session: result.Session,
