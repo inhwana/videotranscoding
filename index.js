@@ -260,7 +260,7 @@ async function bootstrap() {
       }
 
       // Check if storedFileName exists
-      if (!video.storedFileName) {
+      if (!video.storedfilename) {
         return res.status(400).json({ error: "Video file name is missing" });
       }
 
@@ -275,7 +275,7 @@ async function bootstrap() {
       // Generate presigned URL for S3 download
       const command = new GetObjectCommand({
         Bucket: bucketName,
-        Key: video.storedFileName,
+        Key: video.storedfilename,
         ResponseContentDisposition: `attachment; filename="${video.originalFileName}"`,
       });
 
