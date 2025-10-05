@@ -28,14 +28,8 @@ const generateSecretHash = (clientId, clientSecret, userName) => {
 
 
 
-
-const cognitoSignUp = async (
-  clientId,
-  clientSecret,
-  username,
-  password,
-  email
-) => {
+// No Changes
+const cognitoSignUp = async (clientId,clientSecret,username,password,email) => {
   // initialise a cognito identity provider client and create a new cognito command
   const client = new Cognito.CognitoIdentityProviderClient({
     region: "ap-southeast-2",
@@ -53,12 +47,9 @@ const cognitoSignUp = async (
   console.log(res);
 };
 
-const confirmWithCode = async (
-  clientId,
-  clientSecret,
-  username,
-  confirmationCode
-) => {
+
+// No Changes
+const confirmWithCode = async (clientId,clientSecret,username,confirmationCode) => {
   const client = new Cognito.CognitoIdentityProviderClient({
     region: "ap-southeast-2",
   });
@@ -74,6 +65,11 @@ const confirmWithCode = async (
 };
 
 let idVerifier;
+
+
+
+
+
 const cognitoLogin = async (clientId, clientSecret, username, password) => {
   //PRAC
   const client = new Cognito.CognitoIdentityProviderClient({
@@ -142,7 +138,8 @@ const mfaconfirm = async(clientId, clientSecret,code, challengeName) =>{
   const command = new Cognito.RespondToAuthChallengeCommandInput({
     ChallengeName:challengeName,
     ClientId:clientId,
-    ChallengeResponses:[{EMAIL_MFA_CODE: code,USERNAME: username}]
+    Session: session,
+    ChallengeResponses:[{EMAIL_MFA_CODE: code,USERNAME: username, SECRET_HASH: generateSecretHash(clientId, clientSecret, username),}]
   });
   
   const res = await client.send(command);

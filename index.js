@@ -249,7 +249,7 @@ app.post("/mfa", async (req, res) => {
 
   try{
     const { clientId, clientSecret } = await getSecrets();
-    await mfaconfirm(clientId, clientSecret, code, ChallengeName);
+    await mfaconfirm(clientId, clientSecret, code, ChallengeName, session, username);
     //res.json({ success: true, message: "MFA Success" });
     res.json({
       idToken: result.AuthenticationResult.IdToken,
@@ -353,7 +353,7 @@ app.post("/mfa", async (req, res) => {
   const transcriptionClient = new AssemblyAI({
     apiKey: assemblyApiKey,
   });
-  
+
   app.post("/transcribe", verifyToken, async (req, res) => {
     const { videoId } = req.body;
 
