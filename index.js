@@ -378,23 +378,25 @@ async function bootstrap() {
         });
       }
 
-      // Generate presigned URL for AssemblyAI
-      const command = new GetObjectCommand({
-        Bucket: bucketName,
-        Key: audioKey,
-      });
+      let transcriptText;
+      let transcriptId = null;
 
-      const audioUrl = await S3Presigner.getSignedUrl(s3Client, command, {
-        expiresIn: 3600,
-      });
-
-      let transcript;
-
+      // Check if transcript already exists in database
       if (videoMetadata.transcript) {
-        transcript = videoMetadata.transcript;
+        transcriptText = videoMetadata.transcript;
       } else {
+        // Generate presigned URL for AssemblyAI
+        const command = new GetObjectCommand({
+          Bucket: bucketName,
+          Key: audioKey,
+        });
+
+        const audioUrl = await S3Presigner.getSignedUrl(s3Client, command, {
+          expiresIn: 3600,
+        });
+
         // Transcribe with AssemblyAI
-        transcript = await transcriptionClient.transcripts.transcribe({
+        const transcript = await transcriptionClient.transcripts.transcribe({
           audio: audioUrl,
           speech_model: "best",
         });
@@ -407,15 +409,18 @@ async function bootstrap() {
           throw new Error("No transcription text received");
         }
 
+        transcriptText = transcript.text;
+        transcriptId = transcript.id;
+
         // Save transcript to database
-        await addTranscript(transcript.text, videoId);
+        await addTranscript(transcriptText, videoId);
       }
 
       // Generate summary using Gemini
       let summary = "No summary available";
       try {
         const summaryResult = await model.generateContent(
-          `Provide a concise summary (2-3 sentences) of this video transcript:\n\n${transcript.text}`
+          `Provide a concise summary (2-3 sentences) of this video transcript:\n\n${transcriptText}`
         );
         summary = summaryResult.response.text();
       } catch (geminiError) {
@@ -424,9 +429,9 @@ async function bootstrap() {
 
       res.json({
         success: true,
-        transcript: transcript.text,
+        transcript: transcriptText,
         summary: summary,
-        transcriptId: transcript.id,
+        transcriptId: transcriptId,
       });
     } catch (err) {
       console.error("Transcription error:", err);
