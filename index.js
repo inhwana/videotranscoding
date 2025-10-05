@@ -66,23 +66,30 @@ async function bootstrap() {
   await initialiseVideoTable();
   await initialiseGemini();
 
+  // endpoint for users to upload video files
+  //S3 Upfload
   app.post("/upload", verifyToken, async (req, res) => {
     const { filename } = req.body;
 
+    // create a name for the file
     const videoId = uuidv4();
     const storedFileName = `${videoId}-${Date.now()}.${filename
       .split(".")
       .pop()}`;
+
     try {
+      // create a new command to put video
       const command = new PutObjectCommand({
         Bucket: bucketName,
         Key: storedFileName,
       });
+
+      // get a presigned URL so that the client can insert a file to the s3 bucket
       const presignedURL = await S3Presigner.getSignedUrl(s3Client, command, {
         expiresIn: presignedUrlExpiry,
       });
-      console.log(presignedURL);
 
+      // update the database with the information of the video
       await addVideo({
         id: videoId,
         userId: req.user.sub,
@@ -92,45 +99,58 @@ async function bootstrap() {
         status: "uploading",
       });
 
+      // invalidate the cache
       await invalidateUserVideosCache(req.user.sub);
 
+      // send back the presigned url so the user can upload their video
       res.json({ url: presignedURL, videoId });
     } catch (err) {
       console.log(err);
     }
   });
 
+  // get metadata of videos
   app.get("/videos", verifyToken, async (req, res) => {
     try {
+      // call the getUsersVideos function from the backend
       const videos = await getUsersVideos(req.user.sub);
       res.json(videos);
     } catch (err) {
-      console.error("Error fetching videos:", err);
-      res.status(500).json({ error: "Failed to fetch videos" });
+      console.error(err);
+      res.status(500).json({ error: "Could not fetch videos" });
     }
   });
 
+  // change the format of the uploaded video
   app.post("/transcode", verifyToken, async (req, res) => {
+    // get the videoId from the client
     const { videoId } = req.body;
+
+    // throw an error if none is returned
     if (!videoId) {
-      return res.status(400).json({ error: "Video ID is required" });
+      return res.status(400).json({ error: "You need to upload a video" });
     }
 
     try {
+      // retrieve video metadata form the database
       const videoMetadata = await getVideo(videoId);
 
+      // if there is no record of the video in the table, or the video does not
+      // belong to the user, an error is
       if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
           .status(403)
-          .json({ error: "Video not found or unauthorized" });
+          .json({ error: "video not found or does not belong to you" });
       }
 
+      // get the storedFilename from the video's metadata
       const storedFileName = videoMetadata.storedfilename;
       const transcodedKey = `transcoded-${storedFileName.replace(
         /\.[^/.]+$/,
         ".mp4"
       )}`;
 
+      // get the stored, uploaded, untranscoded video
       const response = await s3Client.send(
         new GetObjectCommand({
           Bucket: bucketName,
@@ -138,11 +158,15 @@ async function bootstrap() {
         })
       );
 
+      // define input and output streams and make sure the video is actually
+      // retrieved from s3
       const inputStream = response.Body;
-      if (!inputStream) throw new Error("No video data received from S3");
-
+      if (!inputStream) {
+        throw new Error("Couldn't retrieve data from S3");
+      }
       const outputStream = new PassThrough();
 
+      // start a new upload for the transcoded video
       const uploads3 = new Upload({
         client: s3Client,
         params: {
@@ -153,16 +177,17 @@ async function bootstrap() {
         },
       });
 
+      // update the status of the video in the table to transcoding
       await updateVideoStatus(videoId, "transcoding", null);
 
-      // Fix: Handle the promise chain properly
+      // transcode the video to mp4
       const ffmpegPromise = new Promise((resolve, reject) => {
         ffmpeg(inputStream)
           .videoCodec("libx264")
-          .audioCodec("aac") // Add audio codec
+          .audioCodec("aac")
           .outputOptions([
             "-movflags frag_keyframe+empty_moov",
-            "-preset fast", // Faster encoding
+            "-preset fast",
             "-crf 23",
           ])
           .format("mp4")
@@ -182,6 +207,7 @@ async function bootstrap() {
           .pipe(outputStream, { end: false });
       });
 
+      // wait until the video is transcoded and uploaded to s3
       await Promise.all([ffmpegPromise, uploads3.done()]);
 
       const command = new GetObjectCommand({
@@ -191,21 +217,29 @@ async function bootstrap() {
           'attachment; filename="transcodedvideo.mp4"',
       });
 
+      // get the presigned download url
       const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
         expiresIn: presignedUrlExpiry,
       });
 
+      // update the video status in table, which means that the caches are no
+      // longer valid as well
       await updateVideoStatus(videoId, "completed", transcodedKey);
       await invalidateVideoCache(videoId);
       await invalidateUserVideosCache(req.user.sub);
 
+      // send back the download url to the user so they may download the
+      // transcoded video
       res.json({ url: downloadUrl });
     } catch (err) {
+      // send back the errors if there are any, and invalidate the caches too
       console.error("Transcode error:", err);
       await updateVideoStatus(videoId, "failed", null);
-      await invalidateVideoCache(videoId); // ADD THIS
-      await invalidateUserVideosCache(req.user.sub); // ADD THIS
-      res.status(500).json({ error: `Transcoding failed: ${err.message}` });
+      await invalidateVideoCache(videoId);
+      await invalidateUserVideosCache(req.user.sub);
+      res
+        .status(500)
+        .json({ error: `Transcoding was not successful ${err.message}` });
     }
   });
 
