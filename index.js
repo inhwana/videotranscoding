@@ -44,7 +44,7 @@ const {
   getUsersVideos,
   getVideo,
   invalidateUserVideosCache,
-  invalidateUserVideosCache,
+  invalidateVideoCache,
 } = require("./cache.js");
 
 const { getParameters } = require("./parameters.js");
