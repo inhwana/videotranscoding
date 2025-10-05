@@ -3,9 +3,9 @@ const Memcached = require("memcached");
 const util = require("node:util");
 const { getVideoDB, getUsersVideosDB } = require("./db.js");
 const { getParameters } = require("./parameters.js");
+const test = require("node:test");
 
-const { memcachedAddress } = getParameters();
-const memcached = new Memcached(memcachedAddress);
+let memcached;
 
 const initialiseMemcached = async () => {
   const { memcachedAddress } = await getParameters();
@@ -15,6 +15,7 @@ const initialiseMemcached = async () => {
   memcached.aGet = util.promisify(memcached.get);
   memcached.aSet = util.promisify(memcached.set);
   memcached.aDel = util.promisify(memcached.del);
+  await testConnection();
 };
 
 // Cached version of getVideo
@@ -106,9 +107,6 @@ async function testConnection() {
     console.error("🚨 [CACHE] Connection test failed:", error.message);
   }
 }
-
-// Run connection test when module loads
-testConnection();
 
 module.exports = {
   getVideo,
