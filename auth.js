@@ -91,15 +91,15 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
  const res = await client.send(command);
  console.log(res);
   //return res
- if (res.ChallengeName === "EMAIL_OTP")
-  {
-    return res;
-    // return {
-    //   ChallengeName: res.ChallengeName,
-    //   Session: res.Session,
-    //   Username: username
-    // }
-  }
+//  if (res.ChallengeName === "EMAIL_OTP")
+//   {
+//     return res;
+//     // return {
+//     //   ChallengeName: res.ChallengeName,
+//     //   Session: res.Session,
+//     //   Username: username
+//     // }
+//   }
 }
 /*const cognitoLogin = async (clientId, clientSecret, username, password) => {
   const client = new Cognito.CognitoIdentityProviderClient({

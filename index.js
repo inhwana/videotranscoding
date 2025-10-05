@@ -229,24 +229,24 @@ app.post("/", async (req, res) => {
       username,
       password
     );
-    // if (result.ChallengeName === "EMAIL_OTP") {
-    //   res.json({
-    //     ChallengeName: result.ChallengeName,
-    //     Session: result.Session,
-    //     Username: username
-    //   });
-    // } else {
-    //   res.status(400).json({ error: "MFA did not work" });
-    // }
+    if (result.ChallengeName === "EMAIL_OTP") {
+      res.json({
+        ChallengeName: result.ChallengeName,
+        Session: result.Session,
+        Username: username
+      });
+    } else {
+      res.status(400).json({ error: "MFA did not work" });
+    }
 
-    res.json({
-    ChallengeName: result.ChallengeName,
-    Session: result.Session,
-    Username: result.Username
-      /*idToken: result.AuthenticationResult.IdToken,
-      accessToken: result.AuthenticationResult.AccessToken,
-      refreshToken: result.AuthenticationResult.RefreshToken,*/
-    });
+    // res.json({
+    // ChallengeName: result.ChallengeName,
+    // Session: result.Session,
+    // Username: result.Username
+    //   /*idToken: result.AuthenticationResult.IdToken,
+    //   accessToken: result.AuthenticationResult.AccessToken,
+    //   refreshToken: result.AuthenticationResult.RefreshToken,*/
+    // });
   } catch (error) {
     // console.log(error);
     // res.status(400).json({ error: "Login failed" });
