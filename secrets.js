@@ -49,7 +49,7 @@ const getSecrets = async () => {
 
     const apiKeysResponse = await client.send(apiKeysCommand);
 
-    const parsedApiKeys = JSON.parse(apiKeysResponse);
+    const parsedApiKeys = JSON.parse(apiKeysResponse.SecretString);
     const assemblyApiKey = parsedApiKeys.assemblyApiKey;
     const geminiApiKey = parsedApiKeys.geminiApiKey;
 
