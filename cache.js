@@ -36,12 +36,12 @@ async function getVideo(videoId) {
     if (video) {
       await memcached.aSet(cacheKey, JSON.stringify(video), 300);
     } else {
-      console.log(`⚠️ [CACHE] No video found in DB for: ${videoId}`);
+      console.log(`No video found in the database for: ${videoId}`);
     }
 
     return video;
   } catch (error) {
-    console.error(`🚨 [CACHE] Error for video ${videoId}:`, error.message);
+    console.error(`error getting the video ${videoId}:`, error.message);
     return await getVideoDB(videoId);
   }
 }
@@ -65,22 +65,21 @@ async function getUsersVideos(userId) {
 
     return videos;
   } catch (error) {
-    console.error(`🚨 [CACHE] Error for user ${userId}:`, error.message);
+    console.error(
+      `There was an error retrieving the videos for user ${userId}:`,
+      error.message
+    );
 
     return await getUsersVideosDB(userId);
   }
 }
 
-// Cache invalidation with logging
 async function invalidateVideoCache(videoId) {
   const cacheKey = `video:${videoId}`;
   try {
     await memcached.aDel(cacheKey);
   } catch (error) {
-    console.error(
-      `🚨 [CACHE] Error invalidating video ${videoId}:`,
-      error.message
-    );
+    console.error(` Error invalidating the cache:`, error.message);
   }
 }
 
@@ -89,22 +88,18 @@ async function invalidateUserVideosCache(userId) {
   try {
     await memcached.aDel(cacheKey);
   } catch (error) {
-    console.error(
-      `🚨 [CACHE] Error invalidating user videos ${userId}:`,
-      error.message
-    );
+    console.error(`error invalidating cache ${userId}:`, error.message);
   }
 }
 
 // Test connection on startup
 async function testConnection() {
   try {
-    console.log("🧪 [CACHE] Testing memcached connection...");
     await memcached.aSet("test", "connected", 10);
     const result = await memcached.aGet("test");
-    console.log("✅ [CACHE] Connection test successful:", result);
+    console.log("connected to the cache!");
   } catch (error) {
-    console.error("🚨 [CACHE] Connection test failed:", error.message);
+    console.error("error connecting to cache:", error.message);
   }
 }
 
