@@ -36,10 +36,11 @@ const {
   initialiseVideoTable,
   addVideo,
   updateVideoStatus,
-  getUsersVideos,
-  getVideo,
+
   addTranscript,
 } = require("./db.js");
+
+const { getUsersVideos, getVideo } = require("./cache.js");
 
 const { getParameters } = require("./parameters.js");
 
