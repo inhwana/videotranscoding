@@ -4,7 +4,7 @@ const util = require("node:util");
 const { getVideoDB, getUsersVideosDB } = require("./db.js");
 const { getParameters } = require("./parameters.js");
 
-const { memcachedAddress } = getParameters;
+const { memcachedAddress } = getParameters();
 const memcached = new Memcached(memcachedAddress);
 
 // Promisify methods
