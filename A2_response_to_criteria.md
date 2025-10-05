@@ -71,15 +71,15 @@
 
 ### Core - Statelessness
 
-- **What data is stored within your application that is not stored in cloud data services?:** [eg. intermediate video files that have been transcoded but not stabilised]
-- **Why is this data not considered persistent state?:** [eg. intermediate files can be recreated from source if they are lost]
-- **How does your application ensure data consistency if the app suddenly stops?:** [eg. journal used to record data transactions before they are done. A separate task scans the journal and corrects problems on startup and once every 5 minutes afterwards. ]
+- **What data is stored within your application that is not stored in cloud data services?:** [All of our data is stored in the cloud, for example we used pre signed URL to directly upload the video from the client to the S3 Bucket.]
+- **Why is this data not considered persistent state?:** [It is not persistent state because the data is directly uploaded and stored in cloud.]
+- **How does your application ensure data consistency if the app suddenly stops?:** []
 - ## **Relevant files:**
 
 ### Graceful handling of persistent connections
 
-- **Type of persistent connection and use:** [eg. server-side-events for progress reporting]
-- **Method for handling lost connections:** [eg. client responds to lost connection by reconnecting and indicating loss of connection to user until connection is re-established ]
+- **Type of persistent connection and use:** []
+- **Method for handling lost connections:** []
 - ## **Relevant files:**
 
 ### Core - Authentication with Cognito
