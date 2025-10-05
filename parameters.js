@@ -21,7 +21,7 @@ async function getParameters() {
       params[param.Name] = param.Value;
     }
 
-    const bucketName = param["/n11908157/bucket_name"];
+    const bucketName = params["/n11908157/bucket_name"];
     const presignedUrlExpiry = parseInt(
       params["/n11908157/presigned-url-expiry"],
       10
