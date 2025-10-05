@@ -6,7 +6,7 @@ const { getParameters } = require("./parameters.js");
 
 const { memcachedAddress } = getParameters();
 const memcached = new Memcached(memcachedAddress);
-
+console.log(memcachedAddress);
 // Promisify methods
 memcached.aGet = util.promisify(memcached.get);
 memcached.aSet = util.promisify(memcached.set);
