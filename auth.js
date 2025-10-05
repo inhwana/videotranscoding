@@ -108,7 +108,7 @@ const verifyToken = async (req, res, next) => {
   }
   try {
     const verifier = jwt.CognitoJwtVerifier.create({
-      userPoolId: "userPoolId",
+      userPoolId: userPoolId,
       tokenUse: "id",
       clientId: clientId,
     });
