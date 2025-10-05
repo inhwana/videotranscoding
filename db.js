@@ -71,7 +71,7 @@ const initialiseVideoTable = async () => {
   }
 };
 
-const getUsersVideosDB = async (userId) => {
+const getUsersVideos = async (userId) => {
   const client = await initDb();
   try {
     const res = await client.query(
@@ -136,7 +136,7 @@ const addVideo = async (metadata) => {
   }
 };
 
-const getVideoDB = async (id) => {
+const getVideo = async (id) => {
   const client = await initDb();
   try {
     const res = await client.query(`SELECT * FROM s142.videos WHERE id = $1`, [
@@ -181,8 +181,8 @@ module.exports = {
   initialiseVideoTable,
   addVideo,
   updateVideoStatus,
-  getVideoDB,
-  getUsersVideosDB,
+  getVideo,
+  getUsersVideos,
   addTranscript,
   getTranscript,
 };

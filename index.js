@@ -32,18 +32,12 @@ const { getSecrets } = require("./secrets.js");
 const cors = require("cors");
 
 const {
-  getVideo,
-  getUsersVideos,
-  invalidateVideoCache,
-  invalidateUserVideosCache,
-} = require("./cache.js");
-
-const {
   initDb,
   initialiseVideoTable,
   addVideo,
   updateVideoStatus,
-
+  getUsersVideos,
+  getVideo,
   addTranscript,
 } = require("./db.js");
 
