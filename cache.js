@@ -2,9 +2,9 @@
 const Memcached = require("memcached");
 const util = require("node:util");
 const { getVideoDB, getUsersVideosDB } = require("./db.js");
+const { getParameters } = require("./parameters.js");
 
-const memcachedAddress =
-  "n11908157-a2.km2jzi.cfg.apse2.cache.amazonaws.com:11211";
+const { memcachedAddress } = getParameters;
 const memcached = new Memcached(memcachedAddress);
 
 // Promisify methods
