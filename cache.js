@@ -35,7 +35,7 @@ async function getVideo(videoId) {
 
     return video;
   } catch (error) {
-    console.error(`🚨 [CACHE] Error for user ${userId}:`, error.message);
+    console.error(`🚨 [CACHE] Error for video ${videoId}:`, error.message);
     return await getVideoDB(videoId);
   }
 }

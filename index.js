@@ -58,11 +58,7 @@ async function bootstrap() {
 
   const { bucketName, presignedUrlExpiry } = await getParameters();
 
-  // const clientId = "dktj13anu4sv0m465jemi791c";
-  // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
-
-  const { clientId, clientSecret, rdsUsername, rdsPassword } =
-    await getSecrets();
+  const { clientId, clientSecret } = await getSecrets();
 
   await initialiseVideoTable();
   //S3 Upfload
@@ -206,6 +202,8 @@ async function bootstrap() {
     } catch (err) {
       console.error("Transcode error:", err);
       await updateVideoStatus(videoId, "failed", null);
+      await invalidateVideoCache(videoId); // ADD THIS
+      await invalidateUserVideosCache(req.user.sub); // ADD THIS
       res.status(500).json({ error: `Transcoding failed: ${err.message}` });
     }
   });
@@ -215,10 +213,6 @@ async function bootstrap() {
     const { username, password } = req.body;
 
     try {
-      // const clientId = "dktj13anu4sv0m465jemi791c";
-      // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
-
-      const { clientId, clientSecret } = await getSecrets();
       const result = await cognitoLogin(
         clientId,
         clientSecret,
@@ -239,10 +233,7 @@ async function bootstrap() {
   app.post("/confirm", async (req, res) => {
     const { username, code } = req.body;
     try {
-      // const clientId = "dktj13anu4sv0m465jemi791c";
-      // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
-
-      const { clientId, clientSecret } = await getSecrets();
+      // const { clientId, clientSecret } = await getSecrets();
       await confirmWithCode(clientId, clientSecret, username, code);
       res.json({ success: true, message: "Confirmation successful" });
     } catch (error) {
@@ -255,10 +246,7 @@ async function bootstrap() {
     const { username, password, email } = req.body;
 
     try {
-      // const clientId = "dktj13anu4sv0m465jemi791c";
-      // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
-
-      const { clientId, clientSecret } = await getSecrets();
+      // const { clientId, clientSecret } = await getSecrets();
       await cognitoSignUp(clientId, clientSecret, username, password, email);
       res.json({
         success: true,
