@@ -3,6 +3,7 @@ SSM = require("@aws-sdk/client-ssm");
 const parameterNames = [
   "/n11908157/bucket_name",
   "/n11908157/presigned-url-expiry",
+  "/n11908157/user-pool-id",
 ];
 
 const client = new SSM.SSMClient({ region: "ap-southeast-2" });
@@ -26,8 +27,10 @@ async function getParameters() {
       params["/n11908157/presigned-url-expiry"],
       10
     );
+
+    const userPoolId = params["/n11908157/user-pool-id"];
     console.log(bucketName, presignedUrlExpiry);
-    return { bucketName, presignedUrlExpiry };
+    return { bucketName, presignedUrlExpiry, userPoolId };
   } catch (error) {
     console.log(error);
   }
