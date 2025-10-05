@@ -5,6 +5,7 @@ const Cognito = require("@aws-sdk/client-cognito-identity-provider");
 const jwt = require("aws-jwt-verify");
 const crypto = require("crypto");
 const { getSecrets } = require("./secrets.js");
+const { getParameters } = require("./parameters.js");
 
 // create a bash64 HMAC-SHA256 hash of username and client id for Amazon Cognito
 const generateSecretHash = (clientId, clientSecret, userName) => {
@@ -87,7 +88,7 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
     ClientId: clientId,
   });
 
-  res = await client.send(command);
+  const res = await client.send(command);
   console.log(res);
 
   const IdToken = res.AuthenticationResult.IdToken;
@@ -100,13 +101,14 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
-  const { clientId, clientSecret } = await getSecrets();
+  const { clientId } = await getSecrets();
+  const { userPoolId } = await getParameters();
   if (!token) {
     return res.status(401).json({ error: "No token provided" });
   }
   try {
     const verifier = jwt.CognitoJwtVerifier.create({
-      userPoolId: "ap-southeast-2_VOCBnVFNo",
+      userPoolId: userPoolId,
       tokenUse: "id",
       clientId: clientId,
     });
