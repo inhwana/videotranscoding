@@ -1,8 +1,6 @@
 const { Pool } = require("pg");
 const { getSecrets } = require("./secrets.js");
 
-let pool;
-
 const initDb = async () => {
   if (!pool) {
     const { rdsUsername, rdsPassword } = await getSecrets();

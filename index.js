@@ -40,7 +40,12 @@ const {
   addTranscript,
 } = require("./db.js");
 
-const { getUsersVideos, getVideo } = require("./cache.js");
+const {
+  getUsersVideos,
+  getVideo,
+  invalidateUserVideosCache,
+  invalidateUserVideosCache,
+} = require("./cache.js");
 
 const { getParameters } = require("./parameters.js");
 
@@ -87,6 +92,8 @@ async function bootstrap() {
         uploadTimestamp: Date.now(),
         status: "uploading",
       });
+
+      await invalidateUserVideosCache(req.user.sub);
       //console.log("Received:", filename, contentType);
       res.json({ url: presignedURL, videoId });
     } catch (err) {
@@ -192,6 +199,8 @@ async function bootstrap() {
       });
 
       await updateVideoStatus(videoId, "completed", transcodedKey);
+      await invalidateVideoCache(videoId);
+      await invalidateUserVideosCache(req.user.sub);
 
       res.json({ url: downloadUrl });
     } catch (err) {
@@ -265,90 +274,6 @@ async function bootstrap() {
     console.log("Server running on port 3000");
   });
 
-  const checkIfAudioInS3 = async (videoId, userSub) => {
-    const videoMetadata = await getVideo(videoId);
-
-    if (!videoMetadata || videoMetadata.userid !== userSub) {
-      throw new Error("Video not found or unauthorised");
-    }
-
-    const storedFileName = videoMetadata.storedfilename;
-
-    const audioKey = `${storedFileName.replace(/\.[^/.]+$/, ".mp3")}`;
-
-    try {
-      await s3Client.send(
-        new GetObjectCommand({
-          Bucket: bucketName,
-          Key: audioKey,
-        })
-      );
-
-      return audioKey;
-    } catch (err) {
-      const code = err && (err.Code || err.name || err.code);
-      if (
-        code !== "NotFound" &&
-        code !== "NoSuchKey" &&
-        !(err.$metadata && err.$metadata.httpStatusCode === 404)
-      ) {
-        throw err;
-      }
-    }
-
-    const videoResponse = await s3Client.send(
-      new GetObjectCommand({
-        Bucket: bucketName,
-        Key: storedFileName,
-      })
-    );
-    const inputStream = videoResponse.Body;
-    if (!inputStream) throw new Error("No video data received from S3");
-
-    const outputStream = new PassThrough();
-    const upload = new Upload({
-      client: s3Client,
-      params: {
-        Bucket: bucketName,
-        Key: audioKey,
-        Body: outputStream,
-        ContentType: "audio/mpeg",
-      },
-    });
-
-    const ffmpegPromise = new Promise((resolve, reject) => {
-      ffmpeg(inputStream)
-        .noVideo()
-        .audioCodec("libmp3lame")
-        .audioBitrate("192k")
-        .format("mp3")
-        .on("start", (cmd) => console.log("ffmpeg started:", cmd))
-        .on("error", (err) => {
-          console.error("ffmpeg error extracting audio:", err);
-          reject(err);
-        })
-        .on("end", () => {
-          console.log("ffmpeg finished extracting audio:", audioKey);
-          resolve();
-        })
-        .pipe(outputStream, { end: true });
-    });
-
-    await Promise.all([ffmpegPromise, upload.done()]);
-
-    try {
-      await updateVideoStatus(videoId, "audio_ready", audioKey);
-    } catch (e) {
-      console.warn("updateVideoStatus(audio_ready) failed:", e.message || e);
-    }
-
-    return audioKey;
-  };
-
-  const transcriptionClient = new AssemblyAI({
-    apiKey: "a62e91c5e6e541529d3f040fa45a753e",
-  });
-
   app.post("/transcribe", verifyToken, async (req, res) => {
     const { videoId } = req.body;
 
@@ -417,6 +342,7 @@ async function bootstrap() {
 
         // Save transcript to database
         await addTranscript(transcriptText, videoId);
+        await invalidateVideoCache(videoId);
       }
 
       // Generate summary using Gemini
@@ -516,6 +442,8 @@ async function bootstrap() {
       });
 
       await updateVideoStatus(videoId, "audio_ready", audioKey);
+      await invalidateVideoCache(videoId);
+      await invalidateUserVideosCache(req.user.sub);
 
       res.json({
         success: true,
