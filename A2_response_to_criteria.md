@@ -85,7 +85,7 @@
 ### Core - Authentication with Cognito
 
 - **User pool name:** [manny-inhwa-app-pool]
-- **How are authentication tokens handled by the client?:** [eg. Response to login request sets a cookie containing the token.]
+- **How are authentication tokens handled by the client?:** [The auth tokens are stored in local storage in the browser by the client, every time a request is made the client retreive the token from local storage to send in the header of the request.]
 - **Video timestamp:** 00:53
 - ## **Relevant files:** 
 - auth.js
