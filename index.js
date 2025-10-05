@@ -1,45 +1,42 @@
+// Import all the packages and relevant functions from them
 const express = require("express");
 const ffmpeg = require("fluent-ffmpeg");
 const dotenv = require("dotenv");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { v4: uuidv4 } = require("uuid");
-//AWS S3
+const S3Presigner = require("@aws-sdk/s3-request-presigner");
+const { Upload } = require("@aws-sdk/lib-storage");
+const { PassThrough } = require("stream");
+const { AssemblyAI } = require("assemblyai");
 const {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
-const S3Presigner = require("@aws-sdk/s3-request-presigner");
-const { Upload } = require("@aws-sdk/lib-storage");
-const { PassThrough } = require("stream");
 
-const s3Client = new S3Client({ region: "ap-southeast-2" });
-
-const { AssemblyAI } = require("assemblyai");
+// import functions from the gemini module
 const { model, initialiseGemini } = require("./gemini.js");
 
-//AWS Secrets
-const SecretsManager = require("@aws-sdk/client-secrets-manager");
+// functions from the auth module
 const {
   cognitoSignUp,
   cognitoLogin,
   confirmWithCode,
   verifyToken,
 } = require("./auth.js");
+
+// functions from the secrets module
 const { getSecrets } = require("./secrets.js");
 
-const cors = require("cors");
-
+// functions from the db module
 const {
-  initDb,
   initialiseVideoTable,
   addVideo,
   updateVideoStatus,
-
   addTranscript,
 } = require("./db.js");
 
+// functions from the cache module
 const {
   getUsersVideos,
   getVideo,
@@ -48,44 +45,51 @@ const {
   initialiseMemcached,
 } = require("./cache.js");
 
+// parameters module
 const { getParameters } = require("./parameters.js");
 
+// Function which basically contains the whole functionality of the app
 async function bootstrap() {
-  //Default
+  // create new express app and use json
   const app = express();
+  app.use(express.json());
 
-  app.use(express.json()); // To get forms from EJS
-  dotenv.config(); // Configuratio
+  // initialise a new S3 client
+  const s3Client = new S3Client({ region: "ap-southeast-2" });
 
+  // get parameters and secrets
   const { bucketName, presignedUrlExpiry } = await getParameters();
-
   const { clientId, clientSecret, assemblyApiKey } = await getSecrets();
 
+  // initialise memCache, the video table, and gemini model
   await initialiseMemcached();
-
   await initialiseVideoTable();
-
   await initialiseGemini();
 
+  // endpoint for users to upload video files
   //S3 Upfload
   app.post("/upload", verifyToken, async (req, res) => {
     const { filename } = req.body;
 
+    // create a name for the file
     const videoId = uuidv4();
     const storedFileName = `${videoId}-${Date.now()}.${filename
       .split(".")
       .pop()}`;
+
     try {
+      // create a new command to put video
       const command = new PutObjectCommand({
         Bucket: bucketName,
         Key: storedFileName,
-        //ContentType: contentType
       });
+
+      // get a presigned URL so that the client can insert a file to the s3 bucket
       const presignedURL = await S3Presigner.getSignedUrl(s3Client, command, {
         expiresIn: presignedUrlExpiry,
       });
       console.log(presignedURL);
-      // Store metadata in RDS
+
       await addVideo({
         id: videoId,
         userId: req.user.sub,
@@ -95,15 +99,15 @@ async function bootstrap() {
         status: "uploading",
       });
 
+      // invalidate the cache
       await invalidateUserVideosCache(req.user.sub);
-      //console.log("Received:", filename, contentType);
+
       res.json({ url: presignedURL, videoId });
     } catch (err) {
       console.log(err);
     }
   });
 
-  // Get user's video history
   app.get("/videos", verifyToken, async (req, res) => {
     try {
       const videos = await getUsersVideos(req.user.sub);
@@ -180,13 +184,12 @@ async function bootstrap() {
           })
           .on("end", () => {
             console.log("Transcoding complete");
-            outputStream.end(); // Important: Close the output stream
+            outputStream.end();
             resolve();
           })
-          .pipe(outputStream, { end: false }); // Don't auto-end the stream
+          .pipe(outputStream, { end: false });
       });
 
-      // Wait for both to complete
       await Promise.all([ffmpegPromise, uploads3.done()]);
 
       const command = new GetObjectCommand({
@@ -214,7 +217,6 @@ async function bootstrap() {
     }
   });
 
-  // this is the login thing that you should do/check/add your aws thing to!!
   app.post("/", async (req, res) => {
     const { username, password } = req.body;
 
@@ -252,7 +254,6 @@ async function bootstrap() {
     const { username, password, email } = req.body;
 
     try {
-      // const { clientId, clientSecret } = await getSecrets();
       await cognitoSignUp(clientId, clientSecret, username, password, email);
       res.json({
         success: true,
@@ -305,12 +306,10 @@ async function bootstrap() {
       let transcriptText;
       let transcriptId = null;
 
-      // Check if transcript already exists in database
       if (videoMetadata.transcript) {
         console.log("using database transcript!!");
         transcriptText = videoMetadata.transcript;
       } else {
-        // Generate presigned URL for AssemblyAI
         const command = new GetObjectCommand({
           Bucket: bucketName,
           Key: audioKey,
@@ -320,7 +319,6 @@ async function bootstrap() {
           expiresIn: presignedUrlExpiry,
         });
 
-        // Transcribe with AssemblyAI
         const transcript = await transcriptionClient.transcripts.transcribe({
           audio: audioUrl,
           speech_model: "best",
@@ -337,12 +335,10 @@ async function bootstrap() {
         transcriptText = transcript.text;
         transcriptId = transcript.id;
 
-        // Save transcript to database
         await addTranscript(transcriptText, videoId);
         await invalidateVideoCache(videoId);
       }
 
-      // Generate summary using Gemini
       let summary = "No summary available";
       try {
         const summaryResult = await model.generateContent(
@@ -386,13 +382,11 @@ async function bootstrap() {
       const storedFileName = videoMetadata.storedfilename;
       const audioKey = storedFileName.replace(/\.[^/.]+$/, ".mp3");
 
-      // Check if audio already exists
       try {
         await s3Client.send(
           new GetObjectCommand({ Bucket: bucketName, Key: audioKey })
         );
       } catch (err) {
-        // Audio doesn't exist, extract it
         const videoResponse = await s3Client.send(
           new GetObjectCommand({ Bucket: bucketName, Key: storedFileName })
         );
@@ -426,7 +420,6 @@ async function bootstrap() {
         await upload.done();
       }
 
-      // Generate download URL
       const command = new GetObjectCommand({
         Bucket: bucketName,
         Key: audioKey,
