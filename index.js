@@ -383,6 +383,7 @@ async function bootstrap() {
 
       // Check if transcript already exists in database
       if (videoMetadata.transcript) {
+        console.log("using database transcript!!");
         transcriptText = videoMetadata.transcript;
       } else {
         // Generate presigned URL for AssemblyAI
