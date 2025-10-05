@@ -262,6 +262,9 @@ async function bootstrap() {
     console.log("Server running on port 3000");
   });
 
+  const transcriptionClient = new AssemblyAI({
+    apiKey: "a62e91c5e6e541529d3f040fa45a753e",
+  });
   app.post("/transcribe", verifyToken, async (req, res) => {
     const { videoId } = req.body;
 
