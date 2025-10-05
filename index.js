@@ -388,22 +388,28 @@ async function bootstrap() {
         expiresIn: 3600,
       });
 
-      // Transcribe with AssemblyAI
-      const transcript = await transcriptionClient.transcripts.transcribe({
-        audio: audioUrl,
-        speech_model: "best",
-      });
+      let transcript;
 
-      if (transcript.status === "error") {
-        throw new Error(transcript.error || "Transcription failed");
+      if (videoMetadata.transcript) {
+        transcript = videoMetadata.transcript;
+      } else {
+        // Transcribe with AssemblyAI
+        transcript = await transcriptionClient.transcripts.transcribe({
+          audio: audioUrl,
+          speech_model: "best",
+        });
+
+        if (transcript.status === "error") {
+          throw new Error(transcript.error || "Transcription failed");
+        }
+
+        if (!transcript.text) {
+          throw new Error("No transcription text received");
+        }
+
+        // Save transcript to database
+        await addTranscript(transcript.text, videoId);
       }
-
-      if (!transcript.text) {
-        throw new Error("No transcription text received");
-      }
-
-      // Save transcript to database
-      await addTranscript(transcript.text, videoId);
 
       // Generate summary using Gemini
       let summary = "No summary available";
