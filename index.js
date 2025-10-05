@@ -53,8 +53,6 @@ async function bootstrap() {
 
   await getParameters();
 
-  const data = await getVideo("e3b7def5-c33a-4c3c-a939-3a5efc71b10d");
-  console.log(data);
   // const clientId = "dktj13anu4sv0m465jemi791c";
   // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
@@ -62,7 +60,7 @@ async function bootstrap() {
     await getSecrets();
   console.log(rdsUsername, rdsPassword, clientId, clientSecret);
   await initialiseVideoTable();
-  //S3 Upload
+  //S3 Upfload
   app.post("/upload", verifyToken, async (req, res) => {
     const { filename } = req.body;
 
