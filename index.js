@@ -229,14 +229,24 @@ app.post("/", async (req, res) => {
       username,
       password
     );
-    res.json({
-    ChallengeName: result.ChallengeName,
-    Session: result.Session,
-    Username: result.Username
-      /*idToken: result.AuthenticationResult.IdToken,
-      accessToken: result.AuthenticationResult.AccessToken,
-      refreshToken: result.AuthenticationResult.RefreshToken,*/
-    });
+    if (result.ChallengeName === "EMAIL_MFA") {
+      res.json({
+        ChallengeName: result.ChallengeName,
+        Session: result.Session,
+        Username: username
+      });
+    } else {
+      res.status(400).json({ error: "MFA did not work" });
+    }
+
+    // res.json({
+    // ChallengeName: result.ChallengeName,
+    // Session: result.Session,
+    // Username: result.Username
+    //   /*idToken: result.AuthenticationResult.IdToken,
+    //   accessToken: result.AuthenticationResult.AccessToken,
+    //   refreshToken: result.AuthenticationResult.RefreshToken,*/
+    // });
   } catch (error) {
     console.log(error);
     res.status(400).json({ error: "Login failed" });

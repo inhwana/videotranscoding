@@ -90,16 +90,16 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
  // Res is the respond
  const res = await client.send(command);
  console.log(res);
-  
- if (res.ChallengeName === "EMAIL_MFA")
-  {
-    return res;
-    // return {
-    //   ChallengeName: res.ChallengeName,
-    //   Session: res.Session,
-    //   Username: username
-    // }
-  }
+  return res
+//  if (res.ChallengeName === "EMAIL_MFA")
+//   {
+//     return res;
+//     // return {
+//     //   ChallengeName: res.ChallengeName,
+//     //   Session: res.Session,
+//     //   Username: username
+//     // }
+//   }
 }
 /*const cognitoLogin = async (clientId, clientSecret, username, password) => {
   const client = new Cognito.CognitoIdentityProviderClient({
