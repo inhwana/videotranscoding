@@ -1,17 +1,18 @@
 SSM = require("@aws-sdk/client-ssm");
 
 const parameterName = "/n11908157/bucket_name";
+const demoParameterName = "/n11908157/demo";
 const client = new SSM.SSMClient({ region: "ap-southeast-2" });
 
 async function getParameters() {
   try {
     response = await client.send(
       new SSM.GetParameterCommand({
-        Name: parameterName,
+        Names: [parameterName],
       })
     );
 
-    console.log(response.Parameter.Value);
+    console.log(response.Parameters);
   } catch (error) {
     console.log(error);
   }
