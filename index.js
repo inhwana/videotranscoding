@@ -243,53 +243,6 @@ async function bootstrap() {
     }
   });
 
-  app.get("/download/:videoId", verifyToken, async (req, res) => {
-    const { videoId } = req.params;
-    const { bucketName, presignedUrlExpiry } = await getParameters();
-
-    try {
-      // Get video details from database
-      const video = await getVideo(videoId);
-
-      // Log the video object for debugging
-      console.log("Video metadata:", video);
-
-      // Check if video exists and status is "completed"
-      if (!video || video.status !== "completed") {
-        return res.status(400).json({ error: "Video not ready or not found" });
-      }
-
-      // Check if storedFileName exists
-      if (!video.storedfilename) {
-        return res.status(400).json({ error: "Video file name is missing" });
-      }
-
-      // Check authorization: user owns the video or is in Admins group
-      if (
-        video.userid !== req.user.sub &&
-        !req.user.groups.includes("Admins")
-      ) {
-        return res.status(403).json({ error: "Video belongs to someone else" });
-      }
-
-      // Generate presigned URL for S3 download
-      const command = new GetObjectCommand({
-        Bucket: bucketName,
-        Key: video.storedfilename,
-        ResponseContentDisposition: `attachment; filename="${video.originalFileName}"`,
-      });
-
-      const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
-        expiresIn: presignedUrlExpiry,
-      });
-
-      // Respond with the presigned URL
-      res.json({ url: downloadUrl });
-    } catch (err) {
-      console.error("Download error:", err);
-      res.status(500).json({ error: "Failed to generate download URL" });
-    }
-  });
   app.post("/confirm", async (req, res) => {
     const { username, code } = req.body;
     try {
