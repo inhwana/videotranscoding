@@ -250,8 +250,8 @@ app.post("/", async (req, res) => {
   } catch (error) {
     // console.log(error);
     // res.status(400).json({ error: "Login failed" });
-    console.error("Cognito login error:", error);
-  res.status(400).json({ error: error.message || "Login failed" });
+    console.error("Cognito login error:", JSON.stringify(error, null, 2));
+    res.status(400).json({ error: error.message || "Login failed" });
   }
 });
 

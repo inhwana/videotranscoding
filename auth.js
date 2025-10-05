@@ -90,7 +90,7 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
  // Res is the respond
  const res = await client.send(command);
  console.log(res);
-  //return res
+  return res
 //  if (res.ChallengeName === "EMAIL_OTP")
 //   {
 //     return res;
