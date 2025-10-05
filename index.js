@@ -74,7 +74,7 @@ async function bootstrap() {
         //ContentType: contentType
       });
       const presignedURL = await S3Presigner.getSignedUrl(s3Client, command, {
-        expiresIn: 3600,
+        expiresIn: presignedUrlExpiry,
       });
       console.log(presignedURL);
       // Store metadata in RDS
@@ -187,7 +187,7 @@ async function bootstrap() {
       });
 
       const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
-        expiresIn: 3600,
+        expiresIn: presignedUrlExpiry,
       });
 
       await updateVideoStatus(videoId, "completed", transcodedKey);
@@ -394,7 +394,7 @@ async function bootstrap() {
         });
 
         const audioUrl = await S3Presigner.getSignedUrl(s3Client, command, {
-          expiresIn: 3600,
+          expiresIn: presignedUrlExpiry,
         });
 
         // Transcribe with AssemblyAI
@@ -511,7 +511,7 @@ async function bootstrap() {
       });
 
       const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
-        expiresIn: 3600,
+        expiresIn: presignedUrlExpiry,
       });
 
       await updateVideoStatus(videoId, "audio_ready", audioKey);
