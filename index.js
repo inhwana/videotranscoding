@@ -45,6 +45,7 @@ const {
   getVideo,
   invalidateUserVideosCache,
   invalidateVideoCache,
+  initialiseMemcached,
 } = require("./cache.js");
 
 const { getParameters } = require("./parameters.js");
@@ -59,6 +60,8 @@ async function bootstrap() {
   const { bucketName, presignedUrlExpiry } = await getParameters();
 
   const { clientId, clientSecret } = await getSecrets();
+
+  await initialiseMem;
 
   await initialiseVideoTable();
   //S3 Upfload
