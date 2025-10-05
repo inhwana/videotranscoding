@@ -251,9 +251,17 @@ async function bootstrap() {
       // Get video details from database
       const video = await getVideo(videoId);
 
+      // Log the video object for debugging
+      console.log("Video metadata:", video);
+
       // Check if video exists and status is "completed"
       if (!video || video.status !== "completed") {
         return res.status(400).json({ error: "Video not ready or not found" });
+      }
+
+      // Check if storedFileName exists
+      if (!video.storedFileName) {
+        return res.status(400).json({ error: "Video file name is missing" });
       }
 
       // Check authorization: user owns the video or is in Admins group
@@ -282,33 +290,6 @@ async function bootstrap() {
       res.status(500).json({ error: "Failed to generate download URL" });
     }
   });
-
-  // login endpoint
-  app.post("/", async (req, res) => {
-    const { username, password } = req.body;
-
-    // call pre-defied cognitoLogin function
-    try {
-      const result = await cognitoLogin(
-        clientId,
-        clientSecret,
-        username,
-        password
-      );
-
-      // send back the tokens!!
-      res.json({
-        idToken: result.AuthenticationResult.IdToken,
-        accessToken: result.AuthenticationResult.AccessToken,
-        refreshToken: result.AuthenticationResult.RefreshToken,
-      });
-    } catch (error) {
-      // log the error
-      console.log(error);
-      res.status(400).json({ error: "Login failed" });
-    }
-  });
-
   app.post("/confirm", async (req, res) => {
     const { username, code } = req.body;
     try {
