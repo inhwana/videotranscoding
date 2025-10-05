@@ -248,10 +248,8 @@ app.post("/", async (req, res) => {
     //   refreshToken: result.AuthenticationResult.RefreshToken,*/
     // });
   } catch (error) {
-    // console.log(error);
-    // res.status(400).json({ error: "Login failed" });
-    console.error("Cognito login error:", JSON.stringify(error, null, 2));
-    res.status(400).json({ error: error.message || "Login failed" });
+    console.log(error);
+    res.status(400).json({ error: "Login failed" });
   }
 });
 
