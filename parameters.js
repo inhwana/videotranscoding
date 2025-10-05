@@ -8,7 +8,7 @@ async function getParameters() {
   try {
     response = await client.send(
       new SSM.GetParameterCommand({
-        Names: [parameterName],
+        Names: [parameterName, demoParameterName],
       })
     );
 
