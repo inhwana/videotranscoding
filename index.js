@@ -120,6 +120,31 @@ async function bootstrap() {
       res.status(500).json({ error: "Could not fetch videos" });
     }
   });
+  // login endpoint
+  app.post("/", async (req, res) => {
+    const { username, password } = req.body;
+
+    // call pre-defied cognitoLogin function
+    try {
+      const result = await cognitoLogin(
+        clientId,
+        clientSecret,
+        username,
+        password
+      );
+
+      // send back the tokens!!
+      res.json({
+        idToken: result.AuthenticationResult.IdToken,
+        accessToken: result.AuthenticationResult.AccessToken,
+        refreshToken: result.AuthenticationResult.RefreshToken,
+      });
+    } catch (error) {
+      // log the error
+      console.log(error);
+      res.status(400).json({ error: "Login failed" });
+    }
+  });
 
   // change the format of the uploaded video
   app.post("/transcode", verifyToken, async (req, res) => {
@@ -245,7 +270,7 @@ async function bootstrap() {
 
   // endpoint for users to confirm their email
   app.post("/confirm", async (req, res) => {
-    // use confirm with code function, and send results to client
+    // use confirm with code
     const { username, code } = req.body;
     try {
       // const { clientId, clientSecret } = await getSecrets();
