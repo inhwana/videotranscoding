@@ -17,7 +17,7 @@ const { PassThrough } = require("stream");
 const s3Client = new S3Client({ region: "ap-southeast-2" });
 
 const { AssemblyAI } = require("assemblyai");
-const { model } = require("./gemini.js");
+const { model, initialiseGemini } = require("./gemini.js");
 
 //AWS Secrets
 const SecretsManager = require("@aws-sdk/client-secrets-manager");
@@ -59,11 +59,14 @@ async function bootstrap() {
 
   const { bucketName, presignedUrlExpiry } = await getParameters();
 
-  const { clientId, clientSecret } = await getSecrets();
+  const { clientId, clientSecret, assemblyApiKey } = await getSecrets();
 
   await initialiseMemcached();
 
   await initialiseVideoTable();
+
+  await initialiseGemini();
+
   //S3 Upfload
   app.post("/upload", verifyToken, async (req, res) => {
     const { filename } = req.body;
@@ -266,7 +269,7 @@ async function bootstrap() {
   });
 
   const transcriptionClient = new AssemblyAI({
-    apiKey: "a62e91c5e6e541529d3f040fa45a753e",
+    apiKey: assemblyApiKey,
   });
   app.post("/transcribe", verifyToken, async (req, res) => {
     const { videoId } = req.body;

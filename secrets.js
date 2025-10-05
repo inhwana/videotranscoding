@@ -8,6 +8,7 @@ const {
   SecretsManagerClient,
   GetSecretValueCommand,
 } = require("@aws-sdk/client-secrets-manager");
+const { application } = require("express");
 
 // store secrets in memory!
 let clientSecret;
@@ -42,11 +43,23 @@ const getSecrets = async () => {
     const rdsUsername = parsedRds.username;
     const rdsPassword = parsedRds.password;
 
+    const apiKeysCommand = new GetSecretValueCommand({
+      SecretId: "n11908157-api-keys",
+    });
+
+    const apiKeysResponse = await client.send(apiKeysCommand);
+
+    const parsedApiKeys = JSON.parse(apiKeysResponse);
+    const assemblyApiKey = parsedApiKeys.assemblyApiKey;
+    const geminiApiKey = parsedApiKeys.geminiApiKey;
+
     return (cachedSecrets = {
       clientSecret,
       clientId,
       rdsUsername,
       rdsPassword,
+      assemblyApiKey,
+      geminiApiKey,
     });
   } catch (err) {
     console.error(err);
