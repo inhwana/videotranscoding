@@ -7,7 +7,7 @@ const client = new SSM.SSMClient({ region: "ap-southeast-2" });
 async function getParameters() {
   try {
     response = await client.send(
-      new SSM.GetParameterCommand({
+      new SSM.GetParametersCommand({
         Names: [parameterName, demoParameterName],
       })
     );
