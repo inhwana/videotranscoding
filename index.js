@@ -14,7 +14,6 @@ const S3Presigner = require("@aws-sdk/s3-request-presigner");
 const { Upload } = require("@aws-sdk/lib-storage");
 const { PassThrough } = require("stream");
 
-const bucketName = "n10851879-test"; // Test Bucket Name
 const s3Client = new S3Client({ region: "ap-southeast-2" });
 
 const { AssemblyAI } = require("assemblyai");
@@ -51,14 +50,14 @@ async function bootstrap() {
   app.use(express.json()); // To get forms from EJS
   dotenv.config(); // Configuratio
 
-  await getParameters();
+  const { bucketName, presignedUrlExpiry } = await getParameters();
 
   // const clientId = "dktj13anu4sv0m465jemi791c";
   // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
 
   const { clientId, clientSecret, rdsUsername, rdsPassword } =
     await getSecrets();
-  console.log(rdsUsername, rdsPassword, clientId, clientSecret);
+
   await initialiseVideoTable();
   //S3 Upfload
   app.post("/upload", verifyToken, async (req, res) => {
