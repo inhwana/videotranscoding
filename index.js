@@ -282,6 +282,7 @@ async function bootstrap() {
       res.status(500).json({ error: "Failed to generate download URL" });
     }
   });
+
   app.post("/", async (req, res) => {
     const { username, password } = req.body;
 
