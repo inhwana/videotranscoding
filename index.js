@@ -209,6 +209,36 @@ async function bootstrap() {
     }
   });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   app.post("/", async (req, res) => {
     const { username, password } = req.body;
 
@@ -220,9 +250,12 @@ async function bootstrap() {
         password
       );
       res.json({
-        idToken: result.AuthenticationResult.IdToken,
-        accessToken: result.AuthenticationResult.AccessToken,
-        refreshToken: result.AuthenticationResult.RefreshToken,
+        ChallengeName: result.ChallengeName,
+        Session: result.Session,
+        Username: result.Username
+        // idToken: result.AuthenticationResult.IdToken,
+        // accessToken: result.AuthenticationResult.AccessToken,
+        // refreshToken: result.AuthenticationResult.RefreshToken,
       });
     } catch (error) {
       console.log(error);
@@ -256,6 +289,40 @@ async function bootstrap() {
       res.status(400).json({ error: "Registration failed" });
     }
   });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   app.listen(3000, () => {
     console.log("Server running on port 3000");

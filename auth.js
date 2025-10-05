@@ -19,6 +19,36 @@ const generateSecretHash = (clientId, clientSecret, userName) => {
   return hasher.digest("base64");
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const cognitoSignUp = async (
   clientId,
   clientSecret,
@@ -43,6 +73,10 @@ const cognitoSignUp = async (
   console.log(res);
 };
 
+
+
+
+
 const confirmWithCode = async (
   clientId,
   clientSecret,
@@ -65,18 +99,51 @@ const confirmWithCode = async (
 
 let idVerifier;
 
+
+
+
+
+// const cognitoLogin = async (clientId, clientSecret, username, password) => {
+//   const client = new Cognito.CognitoIdentityProviderClient({
+//     region: "ap-southeast-2",
+//   });
+
+//   if (!idVerifier) {
+//     idVerifier = jwt.CognitoJwtVerifier.create({
+//       userPoolId: "ap-southeast-2_VOCBnVFNo",
+//       tokenUse: "id",
+//       clientId: clientId,
+//     });
+//   }
+
+//   const command = new Cognito.InitiateAuthCommand({
+//     AuthFlow: Cognito.AuthFlowType.USER_PASSWORD_AUTH,
+//     AuthParameters: {
+//       USERNAME: username,
+//       PASSWORD: password,
+//       SECRET_HASH: generateSecretHash(clientId, clientSecret, username),
+//     },
+//     ClientId: clientId,
+//   });
+
+//   const res = await client.send(command);
+//   console.log(res);
+
+//   const IdToken = res.AuthenticationResult.IdToken;
+//   const IdTokenVerifyResult = await idVerifier.verify(IdToken);
+//   console.log(IdTokenVerifyResult);
+
+//   return res;
+// };
+
+
+
+
+// This is good code
 const cognitoLogin = async (clientId, clientSecret, username, password) => {
   const client = new Cognito.CognitoIdentityProviderClient({
     region: "ap-southeast-2",
   });
-
-  if (!idVerifier) {
-    idVerifier = jwt.CognitoJwtVerifier.create({
-      userPoolId: "ap-southeast-2_VOCBnVFNo",
-      tokenUse: "id",
-      clientId: clientId,
-    });
-  }
 
   const command = new Cognito.InitiateAuthCommand({
     AuthFlow: Cognito.AuthFlowType.USER_PASSWORD_AUTH,
@@ -91,12 +158,49 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
   const res = await client.send(command);
   console.log(res);
 
-  const IdToken = res.AuthenticationResult.IdToken;
-  const IdTokenVerifyResult = await idVerifier.verify(IdToken);
-  console.log(IdTokenVerifyResult);
-
-  return res;
+  if (res.ChallengeName === "EMAIL_MFA")
+  {
+    return {
+      ChallengeName: res.ChallengeName,
+      Session: res.Session,
+      Username: username
+    }
+  }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
