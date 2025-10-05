@@ -230,7 +230,7 @@ app.post("/", async (req, res) => {
       password
     );
     res.json({
-      ChallengeName: result.ChallengeName,
+    ChallengeName: result.ChallengeName,
     Session: result.Session,
     Username: result.Username
       /*idToken: result.AuthenticationResult.IdToken,

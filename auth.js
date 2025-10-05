@@ -93,11 +93,12 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
   
  if (res.ChallengeName === "EMAIL_MFA")
   {
-    return {
-      ChallengeName: res.ChallengeName,
-      Session: res.Session,
-      Username: username
-    }
+    return res;
+    // return {
+    //   ChallengeName: res.ChallengeName,
+    //   Session: res.Session,
+    //   Username: username
+    // }
   }
 }
 /*const cognitoLogin = async (clientId, clientSecret, username, password) => {
