@@ -9,12 +9,12 @@ let memcached;
 
 const initialiseMemcached = async () => {
   const { memcachedAddress } = await getParameters();
-  const memcached = new Memcached(memcachedAddress);
+  memcached = new Memcached(memcachedAddress);
   console.log(memcachedAddress);
   // Promisify methods
-  memcached.aGet = util.promisify(memcached.get);
-  memcached.aSet = util.promisify(memcached.set);
-  memcached.aDel = util.promisify(memcached.del);
+  memcached.aGet = util.promisify(memcached.get.bind(memcached));
+  memcached.aSet = util.promisify(memcached.get.bind(memcached));
+  memcached.aDel = util.promisify(memcached.get.bind(memcached));
   await testConnection();
 };
 
