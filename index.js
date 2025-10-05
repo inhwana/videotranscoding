@@ -271,7 +271,7 @@ async function bootstrap() {
         ResponseContentDisposition: `attachment; filename="${video.originalFileName}"`,
       });
 
-      const downloadUrl = await getSignedUrl(s3Client, command, {
+      const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
         expiresIn: presignedUrlExpiry,
       });
 
@@ -283,9 +283,11 @@ async function bootstrap() {
     }
   });
 
+  // login endpoint
   app.post("/", async (req, res) => {
     const { username, password } = req.body;
 
+    // call pre-defied cognitoLogin function
     try {
       const result = await cognitoLogin(
         clientId,
@@ -293,12 +295,15 @@ async function bootstrap() {
         username,
         password
       );
+
+      // send back the tokens!!
       res.json({
         idToken: result.AuthenticationResult.IdToken,
         accessToken: result.AuthenticationResult.AccessToken,
         refreshToken: result.AuthenticationResult.RefreshToken,
       });
     } catch (error) {
+      // log the error
       console.log(error);
       res.status(400).json({ error: "Login failed" });
     }
