@@ -13,8 +13,8 @@ const initialiseMemcached = async () => {
   console.log(memcachedAddress);
   // Promisify methods
   memcached.aGet = util.promisify(memcached.get.bind(memcached));
-  memcached.aSet = util.promisify(memcached.get.bind(memcached));
-  memcached.aDel = util.promisify(memcached.get.bind(memcached));
+  memcached.aSet = util.promisify(memcached.set.bind(memcached));
+  memcached.aDel = util.promisify(memcached.del.bind(memcached));
   await testConnection();
 };
 
