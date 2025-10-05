@@ -243,7 +243,9 @@ async function bootstrap() {
     }
   });
 
+  // endpoint for users to confirm their email
   app.post("/confirm", async (req, res) => {
+    // use confirm with code function, and send results to client
     const { username, code } = req.body;
     try {
       // const { clientId, clientSecret } = await getSecrets();
