@@ -50,7 +50,7 @@ async function bootstrap() {
   app.use(express.json()); // To get forms from EJS
   dotenv.config(); // Configuratio
 
-  // const { bucketName, presignedUrlExpiry } = await getParameters();
+  const { bucketName, presignedUrlExpiry } = await getParameters();
 
   // const clientId = "dktj13anu4sv0m465jemi791c";
   // const clientSecret = "6stus15j84852ob1064hfepfchosrgk65231fanpqjq8qr03qo6"
