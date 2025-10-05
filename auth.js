@@ -19,6 +19,16 @@ const generateSecretHash = (clientId, clientSecret, userName) => {
   return hasher.digest("base64");
 };
 
+
+
+
+
+
+
+
+
+
+
 const cognitoSignUp = async (
   clientId,
   clientSecret,
@@ -64,8 +74,37 @@ const confirmWithCode = async (
 };
 
 let idVerifier;
-
 const cognitoLogin = async (clientId, clientSecret, username, password) => {
+  //PRAC
+  const client = new Cognito.CognitoIdentityProviderClient({
+    region: "ap-southeast-2",
+  });
+
+  // Actual Login (PRAC)
+  const command = new Cognito.InitiateAuthCommand({
+    AuthFlow: Cognito.AuthFlowType.USER_PASSWORD_AUTH,
+    AuthParameters: {
+      USERNAME: username,
+      PASSWORD: password,
+      SECRET_HASH: generateSecretHash(clientId, clientSecret, username),
+    },
+    ClientId: clientId, // Which cognito app client to use aws console.
+  });
+ // Send login request to cognito
+ // Res is the respond
+ const res = await client.send(command);
+ console.log(res);
+  
+ if (res.ChallengeName === "EMAIL_MFA")
+  {
+    return {
+      ChallengeName: res.ChallengeName,
+      Session: res.Session,
+      Username: username
+    }
+  }
+}
+/*const cognitoLogin = async (clientId, clientSecret, username, password) => {
   const client = new Cognito.CognitoIdentityProviderClient({
     region: "ap-southeast-2",
   });
@@ -96,7 +135,30 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
   console.log(IdTokenVerifyResult);
 
   return res;
-};
+};*/
+
+
+const mfaconfirm = async(clientId, clientSecret,code, challengeName) =>{
+  const command = new Cognito.RespondToAuthChallengeCommandInput({
+    ChallengeName:challengeName,
+    ClientId:clientId,
+    ChallengeResponses:[{EMAIL_MFA_CODE: code,USERNAME: username}]
+  });
+  
+  const res = await client.send(command);
+   // TOKEN RESPONSE
+   const IdToken = res.AuthenticationResult.IdToken; // This is the output of only a small part
+   const IdTokenVerifyResult = await idVerifier.verify(IdToken);
+   console.log(IdTokenVerifyResult);
+   return res
+  
+  }
+
+
+
+
+
+
 
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -127,4 +189,5 @@ module.exports = {
   cognitoLogin,
   confirmWithCode,
   verifyToken,
-};
+  mfaconfirm
+}

@@ -209,6 +209,63 @@ async function bootstrap() {
     }
   });
 
+
+
+
+
+
+
+
+
+
+// this is the login thing that you should do/check/add your aws thing to!!
+app.post("/", async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const { clientId, clientSecret } = await getSecrets();
+    const result = await cognitoLogin(
+      clientId,
+      clientSecret,
+      username,
+      password
+    );
+    res.json({
+      ChallengeName: res.ChallengeName,
+    Session: res.Session,
+    Username: username
+      /*idToken: result.AuthenticationResult.IdToken,
+      accessToken: result.AuthenticationResult.AccessToken,
+      refreshToken: result.AuthenticationResult.RefreshToken,*/
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ error: "Login failed" });
+  }
+});
+
+
+app.post("/mfa", async (req, res) => {
+  const { ChallengeName,code } = req.body;
+
+  try{
+    const { clientId, clientSecret } = await getSecrets();
+    await mfaconfirm(clientId, clientSecret, code, ChallengeName);
+    //res.json({ success: true, message: "MFA Success" });
+    res.json({
+      idToken: result.AuthenticationResult.IdToken,
+      accessToken: result.AuthenticationResult.AccessToken,
+      refreshToken: result.AuthenticationResult.RefreshToken,
+    });
+  } catch (error){
+    console.log(error);
+    res.status(400).json({ error: "Confirmation failed" });
+  }
+
+});
+
+
+
+/*
   app.post("/", async (req, res) => {
     const { username, password } = req.body;
 
@@ -228,7 +285,7 @@ async function bootstrap() {
       console.log(error);
       res.status(400).json({ error: "Login failed" });
     }
-  });
+  });*/
 
   app.post("/confirm", async (req, res) => {
     const { username, code } = req.body;
@@ -257,6 +314,38 @@ async function bootstrap() {
     }
   });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   app.listen(3000, () => {
     console.log("Server running on port 3000");
   });
@@ -264,6 +353,7 @@ async function bootstrap() {
   const transcriptionClient = new AssemblyAI({
     apiKey: assemblyApiKey,
   });
+  
   app.post("/transcribe", verifyToken, async (req, res) => {
     const { videoId } = req.body;
 
