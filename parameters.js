@@ -32,7 +32,7 @@ async function getParameters() {
     const userPoolId = params["/n11908157/user-pool-id"];
 
     const memcachedAddress = params["/n11908157/memcached-address"];
-    console.log(bucketName, presignedUrlExpiry);
+    console.log(bucketName, presignedUrlExpiry, memcachedAddress);
     return { bucketName, presignedUrlExpiry, userPoolId, memcachedAddress };
   } catch (error) {
     console.log(error);
