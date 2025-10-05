@@ -49,7 +49,6 @@ const initialiseVideoTable = async () => {
       return;
     }
 
-    // Create videos table (should not reach here given current permissions)
     await client.query(`
       CREATE TABLE s142.videos (
         id TEXT PRIMARY KEY,
