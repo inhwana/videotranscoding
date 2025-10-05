@@ -42,12 +42,16 @@ const {
   addTranscript,
 } = require("./db.js");
 
+const { getParameters } = require("./parameters.js");
+
 async function bootstrap() {
   //Default
   const app = express();
 
   app.use(express.json()); // To get forms from EJS
   dotenv.config(); // Configuratio
+
+  await getParameters();
 
   const data = await getVideo("e3b7def5-c33a-4c3c-a939-3a5efc71b10d");
   console.log(data);
