@@ -61,7 +61,7 @@ async function bootstrap() {
 
   const { clientId, clientSecret } = await getSecrets();
 
-  await initialiseMem;
+  await initialiseMemcached();
 
   await initialiseVideoTable();
   //S3 Upfload
