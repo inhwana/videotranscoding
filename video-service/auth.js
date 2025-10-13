@@ -44,8 +44,6 @@ const verifyToken = async (req, res, next) => {
 
 module.exports = {
   generateSecretHash,
-  cognitoSignUp,
-  cognitoLogin,
-  confirmWithCode,
+
   verifyToken,
 };
