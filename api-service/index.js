@@ -13,6 +13,7 @@ const {
   GetObjectCommand,
   DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
+const { SendMessageCommand, SQSClient } = require("@aws-sdk/client-sqs");
 
 // import functions from the gemini module
 const { model, initialiseGemini } = require("./gemini.js");
@@ -51,6 +52,7 @@ async function bootstrap() {
 
   // initialise a new S3 client
   const s3Client = new S3Client({ region: "ap-southeast-2" });
+  const sqsClient = new SQSClient({ region: "ap-southeast-2" });
 
   // get parameters and secrets
   const { bucketName, presignedUrlExpiry } = await getParameters();
@@ -65,6 +67,10 @@ async function bootstrap() {
   //S3 Upfload
   app.post("/upload", verifyToken, async (req, res) => {
     const { filename } = req.body;
+
+    if (!filename) {
+      return res.status(400).json({ error: "Filename is required" });
+    }
 
     // create a name for the file
     const videoId = uuidv4();
@@ -98,6 +104,15 @@ async function bootstrap() {
       await invalidateUserVideosCache(req.user.sub);
 
       // send back the presigned url so the user can upload their video
+      res.json({ url: presignedURL, videoId });
+      const queueUrl = "replace";
+      await sqsClient.send(
+        new SendMessageCommand({
+          QueueUrl: queueUrl,
+          MessageBody: JSON.stringify({ videoId, taskType: "extract-audio" }),
+        })
+      );
+
       res.json({ url: presignedURL, videoId });
     } catch (err) {
       console.log(err);
@@ -138,94 +153,18 @@ async function bootstrap() {
           .json({ error: "video not found or does not belong to you" });
       }
 
-      // get the storedFilename from the video's metadata
-      const storedFileName = videoMetadata.storedfilename;
-      const transcodedKey = `transcoded-${storedFileName.replace(
-        /\.[^/.]+$/,
-        ".mp4"
-      )}`;
-
-      // get the stored, uploaded, untranscoded video
-      const response = await s3Client.send(
-        new GetObjectCommand({
-          Bucket: bucketName,
-          Key: storedFileName,
+      const queueUrl =
+        "https://sqs.ap-southeast-2.amazonaws.com/123456789012/video-processing-queue";
+      await sqsClient.send(
+        new SendMessageCommand({
+          QueueUrl: queueUrl,
+          MessageBody: JSON.stringify({ videoId, taskType: "transcode" }),
         })
       );
-
-      // define input and output streams and make sure the video is actually
-      // retrieved from s3
-      const inputStream = response.Body;
-      if (!inputStream) {
-        throw new Error("Couldn't retrieve data from S3");
-      }
-      const outputStream = new PassThrough();
-
-      // start a new upload for the transcoded video
-      const uploads3 = new Upload({
-        client: s3Client,
-        params: {
-          Bucket: bucketName,
-          Key: transcodedKey,
-          Body: outputStream,
-          ContentType: "video/mp4",
-        },
-      });
-
       // update the status of the video in the table to transcoding
-      await updateVideoStatus(videoId, "transcoding", null);
+      await updateVideoStatus(videoId, "queued", null);
 
       // transcode the video to mp4
-      const ffmpegPromise = new Promise((resolve, reject) => {
-        ffmpeg(inputStream)
-          .videoCodec("libx264")
-          .audioCodec("aac")
-          .outputOptions([
-            "-movflags frag_keyframe+empty_moov",
-            "-preset fast",
-            "-crf 23",
-          ])
-          .format("mp4")
-          .on("start", (cmd) => console.log("FFmpeg started:", cmd))
-          .on("progress", (progress) => {
-            console.log(`Processing: ${progress.percent}% done`);
-          })
-          .on("error", (err) => {
-            console.error("FFmpeg error:", err.message);
-            reject(err);
-          })
-          .on("end", () => {
-            console.log("Transcoding complete");
-            outputStream.end();
-            resolve();
-          })
-          .pipe(outputStream, { end: false });
-      });
-
-      // wait until the video is transcoded and uploaded to s3
-      await Promise.all([ffmpegPromise, uploads3.done()]);
-
-      const command = new GetObjectCommand({
-        Bucket: bucketName,
-        Key: transcodedKey,
-        ResponseContentDisposition:
-          'attachment; filename="transcodedvideo.mp4"',
-      });
-
-      // get the presigned download url
-      const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
-        expiresIn: presignedUrlExpiry,
-      });
-
-      // update the video status in table, which means that the caches are no
-      // longer valid as well
-      await updateVideoStatus(videoId, "completed", transcodedKey);
-      await invalidateVideoCache(videoId);
-      await invalidateUserVideosCache(req.user.sub);
-
-      // send back the download url to the user so they may download the
-      // transcoded video
-      res.json({ url: downloadUrl });
     } catch (err) {
       // send back the errors if there are any, and invalidate the caches too
       console.error("Transcode error:", err);
@@ -237,8 +176,6 @@ async function bootstrap() {
         .json({ error: `Transcoding was not successful ${err.message}` });
     }
   });
-
-  app.get("/health", (req, res) => res.sendStatus(200));
 
   app.listen(3000, () => {
     console.log("Server running on port 3000");
@@ -262,67 +199,16 @@ async function bootstrap() {
           .status(403)
           .json({ error: "Video not found or unauthorized" });
       }
+      const queueUrl =
+        "https://sqs.ap-southeast-2.amazonaws.com/123456789012/video-processing-queue";
+      await sqsClient.send(
+        new SendMessageCommand({
+          QueueUrl: queueUrl,
+          MessageBody: JSON.stringify({ videoId, taskType: "transcribe" }),
+        })
+      );
 
-      const storedFileName = videoMetadata.storedfilename;
-      const audioKey = storedFileName.replace(/\.[^/.]+$/, ".mp3");
-
-      // Check if audio exists
-      try {
-        await s3Client.send(
-          new GetObjectCommand({ Bucket: bucketName, Key: audioKey })
-        );
-      } catch (err) {
-        return res.status(400).json({
-          error:
-            "Audio not extracted. Please extract audio first using /extract-audio endpoint",
-        });
-      }
-
-      let transcriptText;
-      let transcriptId = null;
-
-      if (videoMetadata.transcript) {
-        console.log("using database transcript!!");
-        transcriptText = videoMetadata.transcript;
-      } else {
-        const command = new GetObjectCommand({
-          Bucket: bucketName,
-          Key: audioKey,
-        });
-
-        const audioUrl = await S3Presigner.getSignedUrl(s3Client, command, {
-          expiresIn: presignedUrlExpiry,
-        });
-
-        const transcript = await transcriptionClient.transcripts.transcribe({
-          audio: audioUrl,
-          speech_model: "best",
-        });
-
-        if (transcript.status === "error") {
-          throw new Error(transcript.error || "Transcription failed");
-        }
-
-        if (!transcript.text) {
-          throw new Error("No transcription text received");
-        }
-
-        transcriptText = transcript.text;
-        transcriptId = transcript.id;
-
-        await addTranscript(transcriptText, videoId);
-        await invalidateVideoCache(videoId);
-      }
-
-      let summary = "No summary available";
-      try {
-        const summaryResult = await model.generateContent(
-          `Provide a concise summary (2-3 sentences) of this video transcript:\n\n${transcriptText}`
-        );
-        summary = summaryResult.response.text();
-      } catch (geminiError) {
-        summary = "Summary generation failed";
-      }
+      await updateVideoStatus(videoId, "queued", null);
 
       res.json({
         success: true,
@@ -354,59 +240,16 @@ async function bootstrap() {
           .json({ error: "Video not found or unauthorized" });
       }
 
-      const storedFileName = videoMetadata.storedfilename;
-      const audioKey = storedFileName.replace(/\.[^/.]+$/, ".mp3");
+      const queueUrl =
+        "https://sqs.ap-southeast-2.amazonaws.com/123456789012/video-processing-queue";
+      await sqsClient.send(
+        new SendMessageCommand({
+          QueueUrl: queueUrl,
+          MessageBody: JSON.stringify({ videoId, taskType: "extract-audio" }),
+        })
+      );
 
-      try {
-        await s3Client.send(
-          new GetObjectCommand({ Bucket: bucketName, Key: audioKey })
-        );
-      } catch (err) {
-        const videoResponse = await s3Client.send(
-          new GetObjectCommand({ Bucket: bucketName, Key: storedFileName })
-        );
-
-        const inputStream = videoResponse.Body;
-        if (!inputStream) throw new Error("No video data received from S3");
-
-        const outputStream = new PassThrough();
-
-        const upload = new Upload({
-          client: s3Client,
-          params: {
-            Bucket: bucketName,
-            Key: audioKey,
-            Body: outputStream,
-            ContentType: "audio/mpeg",
-          },
-        });
-
-        await new Promise((resolve, reject) => {
-          ffmpeg(inputStream)
-            .noVideo()
-            .audioCodec("libmp3lame")
-            .audioBitrate("192k")
-            .format("mp3")
-            .on("error", reject)
-            .on("end", resolve)
-            .pipe(outputStream, { end: true });
-        });
-
-        await upload.done();
-      }
-
-      const command = new GetObjectCommand({
-        Bucket: bucketName,
-        Key: audioKey,
-        ResponseContentDisposition:
-          'attachment; filename="extracted-audio.mp3"',
-      });
-
-      const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
-        expiresIn: presignedUrlExpiry,
-      });
-
-      await updateVideoStatus(videoId, "audio_ready", audioKey);
+      await updateVideoStatus(videoId, "queued", audioKey);
       await invalidateVideoCache(videoId);
       await invalidateUserVideosCache(req.user.sub);
 

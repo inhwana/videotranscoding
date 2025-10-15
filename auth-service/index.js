@@ -105,6 +105,8 @@ async function bootstrap() {
     }
   });
 
+  app.get("/health", (req, res) => res.sendStatus(200));
+
   app.listen(3000, () => {
     console.log("Server running on port 3000");
   });
