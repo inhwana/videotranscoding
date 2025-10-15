@@ -249,14 +249,13 @@ async function bootstrap() {
         })
       );
 
-      await updateVideoStatus(videoId, "queued", audioKey);
+      await updateVideoStatus(videoId, "queued", null);
       await invalidateVideoCache(videoId);
       await invalidateUserVideosCache(req.user.sub);
 
       res.json({
         success: true,
         message: "Audio extracted successfully",
-        downloadUrl: downloadUrl,
       });
     } catch (err) {
       console.error("Audio extraction error:", err);
