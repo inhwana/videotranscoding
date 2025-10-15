@@ -131,6 +131,8 @@ async function bootstrap() {
     }
   });
 
+  app.get("/health", (req, res) => res.sendStatus(200));
+
   // change the format of the uploaded video
   app.post("/transcode", verifyToken, async (req, res) => {
     // get the videoId from the client
@@ -181,9 +183,6 @@ async function bootstrap() {
     console.log("Server running on port 3000");
   });
 
-  const transcriptionClient = new AssemblyAI({
-    apiKey: assemblyApiKey,
-  });
   app.post("/transcribe", verifyToken, async (req, res) => {
     const { videoId } = req.body;
 
