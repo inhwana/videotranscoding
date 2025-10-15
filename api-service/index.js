@@ -105,7 +105,8 @@ async function bootstrap() {
 
       // send back the presigned url so the user can upload their video
       res.json({ url: presignedURL, videoId });
-      const queueUrl = "replace";
+      const queueUrl =
+        "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
       await sqsClient.send(
         new SendMessageCommand({
           QueueUrl: queueUrl,
@@ -154,7 +155,7 @@ async function bootstrap() {
       }
 
       const queueUrl =
-        "https://sqs.ap-southeast-2.amazonaws.com/123456789012/video-processing-queue";
+        "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
       await sqsClient.send(
         new SendMessageCommand({
           QueueUrl: queueUrl,
@@ -200,7 +201,7 @@ async function bootstrap() {
           .json({ error: "Video not found or unauthorized" });
       }
       const queueUrl =
-        "https://sqs.ap-southeast-2.amazonaws.com/123456789012/video-processing-queue";
+        "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
       await sqsClient.send(
         new SendMessageCommand({
           QueueUrl: queueUrl,
@@ -241,7 +242,7 @@ async function bootstrap() {
       }
 
       const queueUrl =
-        "https://sqs.ap-southeast-2.amazonaws.com/123456789012/video-processing-queue";
+        "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
       await sqsClient.send(
         new SendMessageCommand({
           QueueUrl: queueUrl,
