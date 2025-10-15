@@ -103,8 +103,7 @@ async function bootstrap() {
       // invalidate the cache
       await invalidateUserVideosCache(req.user.sub);
 
-      // send back the presigned url so the user can upload their video
-      res.json({ url: presignedURL, videoId });
+      // send back the presigned url so the user can upload their video, and add to the queue baby
       const queueUrl =
         "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
       await sqsClient.send(
