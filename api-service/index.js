@@ -50,6 +50,17 @@ async function bootstrap() {
   const app = express();
   app.use(express.json());
 
+  const cors = require("cors");
+
+  app.use(
+    cors({
+      origin: "http://localhost:5173",
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+      credentials: true,
+    })
+  );
+
   // initialise a new S3 client
   const s3Client = new S3Client({ region: "ap-southeast-2" });
   const sqsClient = new SQSClient({ region: "ap-southeast-2" });
@@ -62,6 +73,10 @@ async function bootstrap() {
   await initialiseMemcached();
   await initialiseVideoTable();
   await initialiseGemini();
+  app.use((req, res, next) => {
+    console.log("Incoming headers:", req.headers);
+    next();
+  });
 
   // endpoint for users to upload video files
   //S3 Upfload
