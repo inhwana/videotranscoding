@@ -1,5 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { getSecrets } = require("./secrets.js");
+const { getSecrets } = require("./secrets");
 require("dotenv").config();
 
 let ai;

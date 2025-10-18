@@ -33,33 +33,9 @@ const getSecrets = async () => {
     const parsedId = JSON.parse(idResponse.SecretString);
     clientId = parsedId.clientId;
 
-    const rdsCommand = new GetSecretValueCommand({
-      SecretId: "n11908157-rds-credentials",
-    });
-
-    const rdsResponse = await client.send(rdsCommand);
-
-    const parsedRds = JSON.parse(rdsResponse.SecretString);
-    const rdsUsername = parsedRds.username;
-    const rdsPassword = parsedRds.password;
-
-    const apiKeysCommand = new GetSecretValueCommand({
-      SecretId: "n11908157-api-keys",
-    });
-
-    const apiKeysResponse = await client.send(apiKeysCommand);
-
-    const parsedApiKeys = JSON.parse(apiKeysResponse.SecretString);
-    const assemblyApiKey = parsedApiKeys.assemblyApiKey;
-    const geminiApiKey = parsedApiKeys.geminiApiKey;
-
     return (cachedSecrets = {
       clientSecret,
       clientId,
-      rdsUsername,
-      rdsPassword,
-      assemblyApiKey,
-      geminiApiKey,
     });
   } catch (err) {
     console.error(err);

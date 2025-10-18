@@ -1,12 +1,8 @@
 // Import all the packages and relevant functions from them
 const express = require("express");
-const ffmpeg = require("fluent-ffmpeg");
-const dotenv = require("dotenv");
 const { v4: uuidv4 } = require("uuid");
 const S3Presigner = require("@aws-sdk/s3-request-presigner");
-const { Upload } = require("@aws-sdk/lib-storage");
-const { PassThrough } = require("stream");
-const { AssemblyAI } = require("assemblyai");
+
 const {
   S3Client,
   PutObjectCommand,
@@ -25,21 +21,9 @@ const { verifyToken } = require("./auth.js");
 const { getSecrets } = require("./secrets.js");
 
 // functions from the db module
-const {
-  initialiseVideoTable,
-  addVideo,
-  updateVideoStatus,
-  addTranscript,
-} = require("./db.js");
+const { initialiseVideoTable } = require("./db.js");
 
 // functions from the cache module
-const {
-  getUsersVideos,
-  getVideo,
-  invalidateUserVideosCache,
-  invalidateVideoCache,
-  initialiseMemcached,
-} = require("./cache.js");
 
 // parameters module
 const { getParameters } = require("./parameters.js");
@@ -66,13 +50,11 @@ async function bootstrap() {
   const sqsClient = new SQSClient({ region: "ap-southeast-2" });
 
   // get parameters and secrets
-  const { bucketName, presignedUrlExpiry } = await getParameters();
-  const { clientId, clientSecret, assemblyApiKey } = await getSecrets();
+  const { bucketName, presignedUrlExpiry, userPoolId } = await getParameters();
+  const { assemblyApiKey, geminiApiKey, clientId } = await getSecrets();
 
   // initialise memCache, the video table, and gemini model
-  await initialiseMemcached();
-  await initialiseVideoTable();
-  await initialiseGemini();
+
   app.use((req, res, next) => {
     console.log("Incoming headers:", req.headers);
     next();
@@ -105,18 +87,30 @@ async function bootstrap() {
         expiresIn: presignedUrlExpiry,
       });
 
-      // update the database with the information of the video
-      await addVideo({
-        id: videoId,
-        userId: req.user.sub,
-        originalFileName: filename,
-        storedFileName,
-        uploadTimestamp: Date.now(),
-        status: "uploading",
-      });
-
-      // invalidate the cache
-      await invalidateUserVideosCache(req.user.sub);
+      const metadataResponse = await fetch(
+        "http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/upload",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: req.headers.authorization,
+          },
+          body: JSON.stringify({
+            id: videoId,
+            userid: req.user.sub,
+            originalFileName: filename,
+            storedFileName,
+            uploadTimestamp: Date.now(),
+            status: "uploading",
+          }),
+        }
+      );
+      console.log("Metadata response status:", metadataResponse.status);
+      const text = await metadataResponse.text();
+      console.log("Metadata response body:", text);
+      if (!metadataResponse.ok) {
+        throw new Error("Failed to add video metadata");
+      }
 
       // send back the presigned url so the user can upload their video, and add to the queue baby
       const queueUrl =
@@ -124,7 +118,7 @@ async function bootstrap() {
       await sqsClient.send(
         new SendMessageCommand({
           QueueUrl: queueUrl,
-          MessageBody: JSON.stringify({ videoId, taskType: "extract-audio" }),
+          MessageBody: JSON.stringify({ videoId, taskType: "transcode" }),
         })
       );
 
@@ -137,8 +131,18 @@ async function bootstrap() {
   // get metadata of videos
   app.get("/videos", verifyToken, async (req, res) => {
     try {
-      // call the getUsersVideos function from the backend
-      const videos = await getUsersVideos(req.user.sub);
+      const metadataResponse = await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/users/${req.user.sub}/videos`,
+        {
+          headers: {
+            Authorization: req.headers.authorization, // Forward the JWT
+          },
+        }
+      );
+      if (!metadataResponse.ok) {
+        throw new Error("Failed to fetch videos from metadata");
+      }
+      const videos = await metadataResponse.json();
       res.json(videos);
     } catch (err) {
       console.error(err);
@@ -160,8 +164,19 @@ async function bootstrap() {
 
     try {
       // retrieve video metadata form the database
-      const videoMetadata = await getVideo(videoId);
+      const metadataResponse = await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}`,
+        {
+          headers: {
+            Authorization: req.headers.authorization, // Forward the JWT
+          },
+        }
+      );
+      if (!metadataResponse.ok) {
+        throw new Error("Failed to fetch video metadata");
+      }
 
+      const videoMetadata = await metadataResponse.json();
       // if there is no record of the video in the table, or the video does not
       // belong to the user, an error is
       if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
@@ -179,15 +194,35 @@ async function bootstrap() {
         })
       );
       // update the status of the video in the table to transcoding
-      await updateVideoStatus(videoId, "queued", null);
+      const updateResponse = await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}/status`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "queued", outputFileName: null }),
+        }
+      );
+      if (!updateResponse.ok) {
+        throw new Error("Failed to update video status");
+      }
 
+      res.json({ success: true });
       // transcode the video to mp4
     } catch (err) {
       // send back the errors if there are any, and invalidate the caches too
       console.error("Transcode error:", err);
-      await updateVideoStatus(videoId, "failed", null);
-      await invalidateVideoCache(videoId);
-      await invalidateUserVideosCache(req.user.sub);
+      await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: req.headers.authorization,
+          },
+          body: JSON.stringify({ status: "failed", outputFileName: null }),
+        }
+      ).catch(console.error);
+
       res
         .status(500)
         .json({ error: `Transcoding was not successful ${err.message}` });
@@ -206,13 +241,25 @@ async function bootstrap() {
     }
 
     try {
-      const videoMetadata = await getVideo(videoId);
+      const metadataResponse = await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}`,
+        {
+          headers: {
+            Authorization: req.headers.authorization, // Forward the JWT
+          },
+        }
+      );
+      if (!metadataResponse.ok) {
+        throw new Error("Failed to fetch video metadata");
+      }
+      const videoMetadata = await metadataResponse.json();
 
       if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
           .status(403)
           .json({ error: "Video not found or unauthorized" });
       }
+
       const queueUrl =
         "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
       await sqsClient.send(
@@ -222,13 +269,39 @@ async function bootstrap() {
         })
       );
 
-      await updateVideoStatus(videoId, "queued", null);
+      const updateResponse = await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: req.headers.authorization,
+          },
+          body: JSON.stringify({ status: "queued", outputFileName: null }),
+        }
+      );
+      if (!updateResponse.ok) {
+        throw new Error("Failed to update video status");
+      }
 
+      // Old
       res.json({
         success: true,
         transcript: transcriptText,
         summary: summary,
         transcriptId: transcriptId,
+      });
+      // New
+      const transcriptResponse = await fetch(
+        `http://ec2-54-252-191-77.../videos/${videoId}/transcript`,
+        { headers: { Authorization: req.headers.authorization } }
+      );
+      const transcriptData = transcriptResponse.ok
+        ? await transcriptResponse.json()
+        : null;
+      res.json({
+        success: true,
+        transcript: transcriptData?.transcript || null,
       });
     } catch (err) {
       console.error("Transcription error:", err);
@@ -246,8 +319,18 @@ async function bootstrap() {
     }
 
     try {
-      const videoMetadata = await getVideo(videoId);
-
+      const metadataResponse = await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}`,
+        {
+          headers: {
+            Authorization: req.headers.authorization, // Forward the JWT
+          },
+        }
+      );
+      if (!metadataResponse.ok) {
+        throw new Error("Failed to fetch video metadata");
+      }
+      const videoMetadata = await metadataResponse.json();
       if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
           .status(403)
@@ -263,19 +346,114 @@ async function bootstrap() {
         })
       );
 
-      await updateVideoStatus(videoId, "queued", null);
-      await invalidateVideoCache(videoId);
-      await invalidateUserVideosCache(req.user.sub);
+      const updateResponse = await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: req.headers.authorization,
+          },
+          body: JSON.stringify({ status: "queued", outputFileName: null }),
+        }
+      );
+      if (!updateResponse.ok) {
+        throw new Error("Failed to update video status");
+      }
+
+      // Invalidate caches via Metadata service
+      await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}/invalidate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: req.headers.authorization,
+          },
+          body: JSON.stringify({ userId: req.user.sub }),
+        }
+      ).catch(console.error);
 
       res.json({
         success: true,
-        message: "Audio extracted successfully",
+        message: "Audio extraction queued successfully",
       });
     } catch (err) {
       console.error("Audio extraction error:", err);
       res.status(500).json({
         error: "Audio extraction failed",
       });
+    }
+  });
+
+  app.get("/videos/:videoId/download", verifyToken, async (req, res) => {
+    const { videoId } = req.params;
+
+    try {
+      const metadataResponse = await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}`,
+        {
+          headers: {
+            Authorization: req.headers.authorization, // Forward the JWT
+          },
+        }
+      );
+      if (!metadataResponse.ok) {
+        throw new Error("Failed to fetch video metadata");
+      }
+      const videoMetadata = await metadataResponse.json();
+
+      if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
+        return res
+          .status(403)
+          .json({ error: "Video not found or unauthorized" });
+      }
+
+      if (
+        videoMetadata.status !== "transcoded" ||
+        !videoMetadata.outputFileName
+      ) {
+        return res.status(400).json({ error: "Video not ready for download" });
+      }
+
+      const command = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: videoMetadata.outputFileName,
+      });
+
+      const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
+        expiresIn: 3600, // 1 hour
+      });
+
+      res.json({ downloadUrl });
+    } catch (err) {
+      console.error("Download error:", err);
+      res.status(500).json({ error: "Failed to generate download URL" });
+    }
+  });
+  app.get("/videos/:videoId", verifyToken, async (req, res) => {
+    try {
+      const metadataResponse = await fetch(
+        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${req.params.videoId}`,
+        {
+          headers: {
+            Authorization: req.headers.authorization, // Forward the JWT
+          },
+        }
+      );
+      if (!metadataResponse.ok) {
+        throw new Error("Failed to fetch video metadata");
+      }
+      const video = await metadataResponse.json();
+      if (!video || video.userid !== req.user.sub) {
+        return res
+          .status(403)
+          .json({ error: "Video not found or unauthorized" });
+      }
+      res.json(video);
+    } catch (err) {
+      console.error("Video fetch error:", err);
+      res.status(500).json({ error: "Failed to fetch video" });
     }
   });
 }
