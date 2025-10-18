@@ -89,7 +89,7 @@ async function bootstrap() {
   });
 
   // Endpoint to update video status
-  app.put("/videos/:videoId/status", verifyToken, async (req, res) => {
+  app.put("/videos/:videoId/status", async (req, res) => {
     const { status, outputFileName } = req.body;
     try {
       // Use your existing updateVideoStatus from db.js
