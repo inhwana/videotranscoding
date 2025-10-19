@@ -88,7 +88,7 @@ async function bootstrap() {
       });
 
       const metadataResponse = await fetch(
-        "http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/upload",
+        "http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/upload",
         {
           method: "POST",
           headers: {
@@ -111,18 +111,10 @@ async function bootstrap() {
       if (!metadataResponse.ok) {
         throw new Error("Failed to add video metadata");
       }
-
+      console.log(storedFileName);
       // send back the presigned url so the user can upload their video, and add to the queue baby
-      const queueUrl =
-        "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
-      await sqsClient.send(
-        new SendMessageCommand({
-          QueueUrl: queueUrl,
-          MessageBody: JSON.stringify({ videoId, taskType: "transcode" }),
-        })
-      );
 
-      res.json({ url: presignedURL, videoId });
+      res.json({ url: presignedURL, videoId, storedFileName });
     } catch (err) {
       console.log(err);
     }
@@ -132,7 +124,7 @@ async function bootstrap() {
   app.get("/videos", verifyToken, async (req, res) => {
     try {
       const metadataResponse = await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/users/${req.user.sub}/videos`,
+        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/users/${req.user.sub}/videos`,
         {
           headers: {
             Authorization: req.headers.authorization, // Forward the JWT
@@ -152,81 +144,37 @@ async function bootstrap() {
 
   app.get("/health", (req, res) => res.sendStatus(200));
 
-  // change the format of the uploaded video
   app.post("/transcode", verifyToken, async (req, res) => {
-    // get the videoId from the client
-    const { videoId } = req.body;
+    const { videoId, storedFileName } = req.body;
+    if (!videoId || !storedFileName)
+      return res.status(400).json({ error: "Missing video info" });
+    const queueUrl =
+      "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
 
-    // throw an error if none is returned
-    if (!videoId) {
-      return res.status(400).json({ error: "You need to upload a video" });
-    }
-
-    try {
-      // retrieve video metadata form the database
-      const metadataResponse = await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}`,
-        {
-          headers: {
-            Authorization: req.headers.authorization, // Forward the JWT
-          },
-        }
-      );
-      if (!metadataResponse.ok) {
-        throw new Error("Failed to fetch video metadata");
+    const updateResponse = await fetch(
+      `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}/status`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: req.headers.authorization,
+        },
+        body: JSON.stringify({ status: "transcoding", outputFileName: null }),
       }
+    );
 
-      const videoMetadata = await metadataResponse.json();
-      // if there is no record of the video in the table, or the video does not
-      // belong to the user, an error is
-      if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
-        return res
-          .status(403)
-          .json({ error: "video not found or does not belong to you" });
-      }
+    await sqsClient.send(
+      new SendMessageCommand({
+        QueueUrl: queueUrl,
+        MessageBody: JSON.stringify({
+          videoId,
+          storedFileName,
+          taskType: "transcode",
+        }),
+      })
+    );
 
-      const queueUrl =
-        "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
-      await sqsClient.send(
-        new SendMessageCommand({
-          QueueUrl: queueUrl,
-          MessageBody: JSON.stringify({ videoId, taskType: "transcode" }),
-        })
-      );
-      // update the status of the video in the table to transcoding
-      const updateResponse = await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}/status`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "queued", outputFileName: null }),
-        }
-      );
-      if (!updateResponse.ok) {
-        throw new Error("Failed to update video status");
-      }
-
-      res.json({ success: true });
-      // transcode the video to mp4
-    } catch (err) {
-      // send back the errors if there are any, and invalidate the caches too
-      console.error("Transcode error:", err);
-      await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}/status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: req.headers.authorization,
-          },
-          body: JSON.stringify({ status: "failed", outputFileName: null }),
-        }
-      ).catch(console.error);
-
-      res
-        .status(500)
-        .json({ error: `Transcoding was not successful ${err.message}` });
-    }
+    res.json({ message: "Transcoding queued" });
   });
 
   app.listen(3000, () => {
@@ -242,7 +190,7 @@ async function bootstrap() {
 
     try {
       const metadataResponse = await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}`,
+        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}`,
         {
           headers: {
             Authorization: req.headers.authorization, // Forward the JWT
@@ -270,7 +218,7 @@ async function bootstrap() {
       );
 
       const updateResponse = await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}/status`,
+        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}/status`,
         {
           method: "PUT",
           headers: {
@@ -293,7 +241,7 @@ async function bootstrap() {
       });
       // New
       const transcriptResponse = await fetch(
-        `http://ec2-54-252-191-77.../videos/${videoId}/transcript`,
+        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}/transcript`,
         { headers: { Authorization: req.headers.authorization } }
       );
       const transcriptData = transcriptResponse.ok
@@ -320,7 +268,7 @@ async function bootstrap() {
 
     try {
       const metadataResponse = await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}`,
+        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}`,
         {
           headers: {
             Authorization: req.headers.authorization, // Forward the JWT
@@ -331,6 +279,7 @@ async function bootstrap() {
         throw new Error("Failed to fetch video metadata");
       }
       const videoMetadata = await metadataResponse.json();
+      const storedFileName = videoMetadata.storedfilename;
       if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
           .status(403)
@@ -342,12 +291,16 @@ async function bootstrap() {
       await sqsClient.send(
         new SendMessageCommand({
           QueueUrl: queueUrl,
-          MessageBody: JSON.stringify({ videoId, taskType: "extract-audio" }),
+          MessageBody: JSON.stringify({
+            videoId,
+            storedFileName,
+            taskType: "extract-audio",
+          }),
         })
       );
 
       const updateResponse = await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}/status`,
+        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}/status`,
         {
           method: "PUT",
           headers: {
@@ -363,7 +316,7 @@ async function bootstrap() {
 
       // Invalidate caches via Metadata service
       await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}/invalidate`,
+        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}/invalidate`,
         {
           method: "POST",
           headers: {
@@ -391,7 +344,7 @@ async function bootstrap() {
 
     try {
       const metadataResponse = await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${videoId}`,
+        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}`,
         {
           headers: {
             Authorization: req.headers.authorization, // Forward the JWT
@@ -408,17 +361,18 @@ async function bootstrap() {
           .status(403)
           .json({ error: "Video not found or unauthorized" });
       }
+      console.log("Video metadata on download:", videoMetadata);
 
       if (
         videoMetadata.status !== "transcoded" ||
-        !videoMetadata.outputFileName
+        !videoMetadata.outputfilename
       ) {
         return res.status(400).json({ error: "Video not ready for download" });
       }
 
       const command = new GetObjectCommand({
         Bucket: bucketName,
-        Key: videoMetadata.outputFileName,
+        Key: videoMetadata.outputfilename,
       });
 
       const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
@@ -434,7 +388,7 @@ async function bootstrap() {
   app.get("/videos/:videoId", verifyToken, async (req, res) => {
     try {
       const metadataResponse = await fetch(
-        `http://ec2-54-252-191-77.ap-southeast-2.compute.amazonaws.com:3000/videos/${req.params.videoId}`,
+        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${req.params.videoId}`,
         {
           headers: {
             Authorization: req.headers.authorization, // Forward the JWT

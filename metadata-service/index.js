@@ -36,7 +36,7 @@ async function bootstrap() {
     // initialise memCache, the video table, and gemini model
     await initialiseMemcached();
     await initialiseVideoTable();
-  } catch {
+  } catch (err) {
     err.console.log(err);
   }
 
