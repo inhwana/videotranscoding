@@ -101,12 +101,12 @@ async function bootstrap() {
     }
   });
 
-  // Additional endpoints if needed (e.g., for transcripts, if Processing calls this)
+  // Additional endpoints
   app.post("/videos/:videoId/transcript", verifyToken, async (req, res) => {
     const { transcript } = req.body;
     try {
       await addTranscript(transcript, req.params.videoId);
-      await invalidateVideoCache(req.params.videoId); // Invalidate cache after update
+      await invalidateVideoCache(req.params.videoId);
       res.json({ success: true });
     } catch (err) {
       console.error("Error adding transcript:", err);

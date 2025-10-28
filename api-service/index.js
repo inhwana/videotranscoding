@@ -130,7 +130,7 @@ async function bootstrap() {
       const text = await metadataResponse.text();
       console.log("Metadata response body:", text);
       if (!metadataResponse.ok) {
-        throw new Error("Failed to add video metadata");
+        throw new Error("failed to add video metadata :(");
       }
       console.log(storedFileName);
       // send back the presigned url so the user can upload their video, and add to the queue baby
@@ -148,18 +148,18 @@ async function bootstrap() {
         `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/users/${req.user.sub}/videos`,
         {
           headers: {
-            Authorization: req.headers.authorization, // Forward the JWT
+            Authorization: req.headers.authorization,
           },
         }
       );
       if (!metadataResponse.ok) {
-        throw new Error("Failed to fetch videos from metadata");
+        throw new Error("can't fetch video metadata");
       }
       const videos = await metadataResponse.json();
       res.json(videos);
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: "Could not fetch videos" });
+      res.status(500).json({ error: "couldn't fetch videos" });
     }
   });
 
@@ -168,7 +168,7 @@ async function bootstrap() {
   app.post("/transcode", verifyToken, async (req, res) => {
     const { videoId, storedFileName } = req.body;
     if (!videoId || !storedFileName)
-      return res.status(400).json({ error: "Missing video info" });
+      return res.status(400).json({ error: "Missing video information" });
     const queueUrl =
       "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
 
@@ -195,7 +195,7 @@ async function bootstrap() {
       })
     );
 
-    res.json({ message: "Transcoding queued" });
+    res.json({ message: "Transcoding queued!" });
   });
 
   app.listen(3000, () => {
@@ -292,19 +292,19 @@ async function bootstrap() {
         `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${videoId}`,
         {
           headers: {
-            Authorization: req.headers.authorization, // Forward the JWT
+            Authorization: req.headers.authorization,
           },
         }
       );
       if (!metadataResponse.ok) {
-        throw new Error("Failed to fetch video metadata");
+        throw new Error("can't fetch video metadata");
       }
       const videoMetadata = await metadataResponse.json();
       const storedFileName = videoMetadata.storedfilename;
       if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
           .status(403)
-          .json({ error: "Video not found or unauthorized" });
+          .json({ error: "Not authorized or video not found" });
       }
 
       const queueUrl =
@@ -332,7 +332,7 @@ async function bootstrap() {
         }
       );
       if (!updateResponse.ok) {
-        throw new Error("Failed to update video status");
+        throw new Error("Can't fetch video status");
       }
 
       // Invalidate caches via Metadata service
@@ -350,12 +350,12 @@ async function bootstrap() {
 
       res.json({
         success: true,
-        message: "Audio extraction queued successfully",
+        message: "queued up audio extraction successfully",
       });
     } catch (err) {
       console.error("Audio extraction error:", err);
       res.status(500).json({
-        error: "Audio extraction failed",
+        error: "failed to extract audio!",
       });
     }
   });
@@ -368,21 +368,21 @@ async function bootstrap() {
         `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${videoId}`,
         {
           headers: {
-            Authorization: req.headers.authorization, // Forward the JWT
+            Authorization: req.headers.authorization,
           },
         }
       );
       if (!metadataResponse.ok) {
-        throw new Error("Failed to fetch video metadata");
+        throw new Error("can't fetch video metadata");
       }
       const videoMetadata = await metadataResponse.json();
 
       if (!videoMetadata || videoMetadata.userid !== req.user.sub) {
         return res
           .status(403)
-          .json({ error: "Video not found or unauthorized" });
+          .json({ error: "video not found or unauthorized" });
       }
-      console.log("Video metadata on download:", videoMetadata);
+      console.log("video metadata on download:", videoMetadata);
 
       if (
         videoMetadata.status !== "transcoded" ||
@@ -397,7 +397,7 @@ async function bootstrap() {
       });
 
       const downloadUrl = await S3Presigner.getSignedUrl(s3Client, command, {
-        expiresIn: 3600, // 1 hour
+        expiresIn: 3600,
       });
 
       res.json({ downloadUrl });
@@ -412,7 +412,7 @@ async function bootstrap() {
         `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${req.params.videoId}`,
         {
           headers: {
-            Authorization: req.headers.authorization, // Forward the JWT
+            Authorization: req.headers.authorization,
           },
         }
       );
