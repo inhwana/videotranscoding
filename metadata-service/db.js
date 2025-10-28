@@ -73,13 +73,17 @@ const getUsersVideosDB = async (userId) => {
   const client = await initDb();
   try {
     const res = await client.query(
-      `SELECT id, userid, originalFileName, storedFileName, uploadTimestamp, status, outputFileName
+      `SELECT id, userid, COALESCE(originalFileName, 'N/A') AS originalFileName, storedFileName, COALESCE(uploadTimestamp::text, 'N/A') AS uploadTimestamp, status, outputFileName
        FROM s142.videos
        WHERE userid = $1
        ORDER BY uploadTimestamp DESC`,
       [userId]
     );
-    return res.rows;
+    return res.rows.map((row) => ({
+      ...row,
+      uploadTimestamp:
+        row.uploadTimestamp === "N/A" ? "N/A" : Number(row.uploadTimestamp),
+    }));
   } catch (err) {
     console.error("Error fetching user videos:", err);
     throw err;

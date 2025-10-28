@@ -14,9 +14,6 @@ const { SendMessageCommand, SQSClient } = require("@aws-sdk/client-sqs");
 // import functions from the gemini module
 const { model, initialiseGemini } = require("./gemini.js");
 
-// functions from the auth module
-const { verifyToken } = require("./auth.js");
-
 // functions from the secrets module
 const { getSecrets } = require("./secrets.js");
 
@@ -60,6 +57,30 @@ async function bootstrap() {
     next();
   });
 
+  const verifyToken = async (req, res, next) => {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ error: "No token" });
+
+    try {
+      const response = await fetch(
+        "http://manny-inhwa-auth-sc.cab432-utfaygk6rl32luiw:3000/verify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Invalid token");
+      const { user } = await response.json();
+
+      req.user = user;
+      next();
+    } catch (err) {
+      res.status(401).json({ error: "Unauthorized" });
+    }
+  };
+
   // endpoint for users to upload video files
   //S3 Upfload
   app.post("/upload", verifyToken, async (req, res) => {
@@ -88,7 +109,7 @@ async function bootstrap() {
       });
 
       const metadataResponse = await fetch(
-        "http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/upload",
+        "http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/upload",
         {
           method: "POST",
           headers: {
@@ -124,7 +145,7 @@ async function bootstrap() {
   app.get("/videos", verifyToken, async (req, res) => {
     try {
       const metadataResponse = await fetch(
-        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/users/${req.user.sub}/videos`,
+        `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/users/${req.user.sub}/videos`,
         {
           headers: {
             Authorization: req.headers.authorization, // Forward the JWT
@@ -152,7 +173,7 @@ async function bootstrap() {
       "https://sqs.ap-southeast-2.amazonaws.com/901444280953/manny-inhwa-transcode-queue";
 
     const updateResponse = await fetch(
-      `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}/status`,
+      `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${videoId}/status`,
       {
         method: "PUT",
         headers: {
@@ -190,10 +211,10 @@ async function bootstrap() {
 
     try {
       const metadataResponse = await fetch(
-        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}`,
+        `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${videoId}`,
         {
           headers: {
-            Authorization: req.headers.authorization, // Forward the JWT
+            Authorization: req.headers.authorization,
           },
         }
       );
@@ -218,7 +239,7 @@ async function bootstrap() {
       );
 
       const updateResponse = await fetch(
-        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}/status`,
+        `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${videoId}/status`,
         {
           method: "PUT",
           headers: {
@@ -241,7 +262,7 @@ async function bootstrap() {
       });
       // New
       const transcriptResponse = await fetch(
-        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}/transcript`,
+        `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${videoId}/transcript`,
         { headers: { Authorization: req.headers.authorization } }
       );
       const transcriptData = transcriptResponse.ok
@@ -268,7 +289,7 @@ async function bootstrap() {
 
     try {
       const metadataResponse = await fetch(
-        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}`,
+        `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${videoId}`,
         {
           headers: {
             Authorization: req.headers.authorization, // Forward the JWT
@@ -300,7 +321,7 @@ async function bootstrap() {
       );
 
       const updateResponse = await fetch(
-        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}/status`,
+        `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${videoId}/status`,
         {
           method: "PUT",
           headers: {
@@ -316,7 +337,7 @@ async function bootstrap() {
 
       // Invalidate caches via Metadata service
       await fetch(
-        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}/invalidate`,
+        `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${videoId}/invalidate`,
         {
           method: "POST",
           headers: {
@@ -344,7 +365,7 @@ async function bootstrap() {
 
     try {
       const metadataResponse = await fetch(
-        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${videoId}`,
+        `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${videoId}`,
         {
           headers: {
             Authorization: req.headers.authorization, // Forward the JWT
@@ -388,7 +409,7 @@ async function bootstrap() {
   app.get("/videos/:videoId", verifyToken, async (req, res) => {
     try {
       const metadataResponse = await fetch(
-        `http://manny-metadata-balancer-1636907737.ap-southeast-2.elb.amazonaws.com:3000/videos/${req.params.videoId}`,
+        `http://manny-inhwa-metadata.cab432-utfaygk6rl32luiw:3000/videos/${req.params.videoId}`,
         {
           headers: {
             Authorization: req.headers.authorization, // Forward the JWT

@@ -19,29 +19,6 @@ const generateSecretHash = (clientId, clientSecret, userName) => {
   return hasher.digest("base64");
 };
 
-const verifyToken = async (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-  const { clientId } = await getSecrets();
-  const { userPoolId } = await getParameters();
-  if (!token) {
-    return res.status(401).json({ error: "No token provided" });
-  }
-  try {
-    const verifier = jwt.CognitoJwtVerifier.create({
-      userPoolId: userPoolId,
-      tokenUse: "id",
-      clientId: clientId,
-    });
-    const payload = await verifier.verify(token);
-    req.user = payload;
-    next();
-  } catch (error) {
-    console.error(error);
-    res.status(401).json({ error: "Invalid token" });
-  }
-};
-
 module.exports = {
   verifyToken,
 };

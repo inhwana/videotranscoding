@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const Cognito = require("@aws-sdk/client-cognito-identity-provider");
-const jwt = require("aws-jwt-verify");
+const { CognitoJwtVerifier } = require("aws-jwt-verify");
 const crypto = require("crypto");
 const { getSecrets } = require("./secrets.js");
 const { getParameters } = require("./parameters.js");
@@ -71,7 +71,7 @@ const cognitoLogin = async (clientId, clientSecret, username, password) => {
   });
 
   if (!idVerifier) {
-    idVerifier = jwt.CognitoJwtVerifier.create({
+    idVerifier = CognitoJwtVerifier.create({
       userPoolId: "ap-southeast-2_VOCBnVFNo",
       tokenUse: "id",
       clientId: clientId,
@@ -107,7 +107,7 @@ const verifyToken = async (req, res, next) => {
     return res.status(401).json({ error: "No token provided" });
   }
   try {
-    const verifier = jwt.CognitoJwtVerifier.create({
+    const verifier = CognitoJwtVerifier.create({
       userPoolId: userPoolId,
       tokenUse: "id",
       clientId: clientId,

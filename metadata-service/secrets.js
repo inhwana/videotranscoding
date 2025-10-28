@@ -1,14 +1,8 @@
-const SecretsManager = require("@aws-sdk/client-secrets-manager");
-
-const client = new SecretsManager.SecretsManagerClient({
-  region: "ap-southeast-2",
-});
-
 const {
   SecretsManagerClient,
   GetSecretValueCommand,
 } = require("@aws-sdk/client-secrets-manager");
-const { application } = require("express");
+const client = new SecretsManagerClient({ region: "ap-southeast-2" });
 
 // store secrets in memory!
 let clientSecret;

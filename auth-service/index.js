@@ -14,8 +14,7 @@ const {
   DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
 
-// import functions from the gemini module
-const { model, initialiseGemini } = require("./gemini.js");
+const { CognitoJwtVerifier } = require("aws-jwt-verify");
 
 // functions from the auth module
 const {
@@ -42,10 +41,7 @@ async function bootstrap() {
   app.use(express.json());
 
   // initialise a new S3 client
-  const s3Client = new S3Client({ region: "ap-southeast-2" });
 
-  // get parameters and secrets
-  const { bucketName, presignedUrlExpiry } = await getParameters();
   const { clientId, clientSecret, assemblyApiKey } = await getSecrets();
 
   // initialise memCache, the video table, and gemini model
@@ -73,6 +69,27 @@ async function bootstrap() {
       // log the error
       console.log(error);
       res.status(400).json({ error: "Login failed" });
+    }
+  });
+  app.post("/verify", async (req, res) => {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ error: "Token required" });
+
+    try {
+      const { clientId } = await getSecrets();
+      const { userPoolId } = await getParameters();
+
+      const verifier = CognitoJwtVerifier.create({
+        userPoolId,
+        tokenUse: "id",
+        clientId,
+      });
+
+      const payload = await verifier.verify(token);
+      res.json({ user: { sub: payload.sub } });
+    } catch (err) {
+      console.error("Token verify failed:", err);
+      res.status(401).json({ error: "Invalid token" });
     }
   });
 

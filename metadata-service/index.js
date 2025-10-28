@@ -37,7 +37,7 @@ async function bootstrap() {
     await initialiseMemcached();
     await initialiseVideoTable();
   } catch (err) {
-    err.console.log(err);
+    console.log(err);
   }
 
   // endpoint for users to upload video files
@@ -76,9 +76,8 @@ async function bootstrap() {
 
   // Endpoint to add video metadata
   app.post("/upload", verifyToken, async (req, res) => {
-    const metadata = req.body; // { id, userId, originalFileName, storedFileName, uploadTimestamp, status }
+    const metadata = req.body;
     try {
-      // Use your existing addVideo from db.js (cache.js doesn't have add, but invalidates after)
       await addVideo(metadata);
       await invalidateUserVideosCache(metadata.userid);
       res.json({ success: true, videoId: metadata.id });
@@ -88,15 +87,11 @@ async function bootstrap() {
     }
   });
 
-  // Endpoint to update video status
   app.put("/videos/:videoId/status", async (req, res) => {
     const { status, outputFileName } = req.body;
     try {
-      // Use your existing updateVideoStatus from db.js
-
       await updateVideoStatus(req.params.videoId, status, outputFileName);
       await invalidateVideoCache(req.params.videoId);
-      // Optionally get video to invalidate user cache
       const video = await getVideo(req.params.videoId);
       if (video) await invalidateUserVideosCache(video.userid);
       res.json({ success: true });

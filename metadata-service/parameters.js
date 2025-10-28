@@ -1,4 +1,4 @@
-SSM = require("@aws-sdk/client-ssm");
+const { SSMClient, GetParametersCommand } = require("@aws-sdk/client-ssm");
 
 const parameterNames = [
   "/n11908157/bucket_name",
@@ -7,12 +7,12 @@ const parameterNames = [
   "/n11908157/memcached-address",
 ];
 
-const client = new SSM.SSMClient({ region: "ap-southeast-2" });
+const client = new SSMClient({ region: "ap-southeast-2" });
 
 async function getParameters() {
   try {
-    response = await client.send(
-      new SSM.GetParametersCommand({
+    const response = await client.send(
+      new GetParametersCommand({
         Names: parameterNames,
       })
     );

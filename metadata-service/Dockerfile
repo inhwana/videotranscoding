@@ -1,9 +1,7 @@
 FROM node:22-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci --only=production  # ← Faster, safer
 COPY . .
-RUN apk update && \ 
-    apk add ffmpeg
-CMD ["node", "index.js"] 
 EXPOSE 3000
+CMD ["node", "index.js"]
