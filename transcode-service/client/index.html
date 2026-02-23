@@ -1,0 +1,69 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+</head>
+<body>
+    <label for="video">Upload Video:</label><br><br>
+    <input type="file" id="video" accept="video/*"><br><br>
+    <button onclick="uploadvideo()">Upload</button>
+    <h2 id="status"></h2>
+    <a id="downloadlink" href=""  style="display: none;"> Download Link</a>
+    
+
+    <script>
+        async function uploadvideo(){
+            const videofile = document.getElementById("video")
+            const video = videofile.files[0]
+            if (!video) return alert("Please upload a video")
+
+            const res = await fetch('/upload', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                //body:JSON.stringify({filename: video.name})
+                body:JSON.stringify({filename: video.name, contentType: video.type})
+            })
+
+            const {url: presignedURL} = await res.json()
+    
+           // fetching the object using an HTTP request to the URL.
+            const uploads3 = await fetch(presignedURL, { 
+                method: "PUT", 
+                headers: {'Content-Type':video.type},
+                body: video
+            });
+            document.getElementById('status').textContent = uploads3.ok ? "Upload Complete":"Upload Fail" 
+            
+
+
+
+
+
+            
+            if(uploads3.ok){
+                const transcode = await fetch('/transcode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    //body:JSON.stringify({filename: video.name})
+                    body:JSON.stringify({filename: video.name, contentType: video.type})
+                })
+                const {url: downloadpresignedURL} = await transcode.json()    
+                // document.getElementById(downloadlink).href = downloadpresignedURL
+                // document.getElementById(downloadlink).textContent = "Download Transcoded Video"
+                // docuemnt.getElementById(downloadlink).style.display = "inline"   
+                
+                const link = document.getElementById("downloadlink");
+                link.href = downloadpresignedURL
+                link.textContent = "Download Transcoded Video"
+                link.style.display = "inline"
+
+            }
+        }
+    </script>
+    <!-- <script src="script.js" defer></script> -->
+</body>
+</html>
